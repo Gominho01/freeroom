@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: freeroom
+    ports:
+      - "5432:5432"
+    volumes:
+      - freeroom_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  freeroom_postgres_data:
