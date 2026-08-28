@@ -2,6 +2,12 @@ import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-open
 import { z } from "../lib/zod.js";
 import { authResponseSchema, loginBodySchema, registerBodySchema } from "../schemas/auth.schema.js";
 import {
+  bookingIdParamsSchema,
+  bookingResponseSchema,
+  createBookingBodySchema,
+  listBookingsQuerySchema,
+} from "../schemas/booking.schema.js";
+import {
   createRoomBodySchema,
   roomIdParamsSchema,
   roomResponseSchema,
@@ -117,6 +123,46 @@ registry.registerPath({
     204: { description: "Room deleted" },
     403: { description: "Admin role required", ...jsonContent(errorResponseSchema) },
     404: { description: "Room not found", ...jsonContent(errorResponseSchema) },
+  },
+});
+
+// --- Bookings ---
+
+registry.registerPath({
+  method: "post",
+  path: "/bookings",
+  tags: ["Bookings"],
+  security: authenticated,
+  request: { body: jsonContent(createBookingBodySchema) },
+  responses: {
+    201: { description: "Booking created", ...jsonContent(bookingResponseSchema) },
+    400: { description: "Validation error", ...jsonContent(errorResponseSchema) },
+    404: { description: "Room not found", ...jsonContent(errorResponseSchema) },
+    409: { description: "Time slot conflict", ...jsonContent(errorResponseSchema) },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/bookings",
+  tags: ["Bookings"],
+  security: authenticated,
+  request: { query: listBookingsQuerySchema },
+  responses: {
+    200: { description: "List of bookings", ...jsonContent(z.array(bookingResponseSchema)) },
+  },
+});
+
+registry.registerPath({
+  method: "delete",
+  path: "/bookings/{id}",
+  tags: ["Bookings"],
+  security: authenticated,
+  request: { params: bookingIdParamsSchema },
+  responses: {
+    204: { description: "Booking cancelled" },
+    403: { description: "Not the booking owner", ...jsonContent(errorResponseSchema) },
+    404: { description: "Booking not found", ...jsonContent(errorResponseSchema) },
   },
 });
 
