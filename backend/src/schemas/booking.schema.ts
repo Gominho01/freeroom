@@ -1,0 +1,44 @@
+import { z } from "../lib/zod.js";
+
+export const bookingResponseSchema = z
+  .object({
+    id: z.string(),
+    roomId: z.string(),
+    userId: z.string(),
+    startTime: z.string(),
+    endTime: z.string(),
+    createdAt: z.string(),
+  })
+  .openapi("Booking");
+
+// Registered for OpenAPI docs. Runtime validation uses `createBookingSchema`
+// below, which adds the cross-field endTime > startTime refinement.
+export const createBookingBodySchema = z
+  .object({
+    roomId: z.string().min(1).openapi({ example: "clx0000000000000000000000" }),
+    startTime: z.iso.datetime().openapi({ example: "2026-09-01T10:00:00.000Z" }),
+    endTime: z.iso.datetime().openapi({ example: "2026-09-01T11:00:00.000Z" }),
+  })
+  .openapi("CreateBookingRequest");
+
+export const createBookingSchema = createBookingBodySchema.refine(
+  (data) => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(),
+  {
+    message: "endTime must be after startTime",
+    path: ["endTime"],
+  },
+);
+
+export const listBookingsQuerySchema = z.object({
+  roomId: z.string().min(1).optional(),
+  userId: z.string().min(1).optional(),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+});
+
+export const bookingIdParamsSchema = z.object({
+  id: z.string().min(1),
+});
+
+export type CreateBookingBody = z.infer<typeof createBookingBodySchema>;
+export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
