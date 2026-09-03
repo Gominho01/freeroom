@@ -4,6 +4,8 @@ export const roomResponseSchema = z
   .object({
     id: z.string(),
     name: z.string(),
+    nickname: z.string(),
+    quirks: z.array(z.string()),
     capacity: z.number().int(),
     amenities: z.array(z.string()),
     createdAt: z.string(),
@@ -13,6 +15,10 @@ export const roomResponseSchema = z
 export const createRoomBodySchema = z
   .object({
     name: z.string().min(1).openapi({ example: "Conference Room A" }),
+    // The room's identity in the UI — a nickname plus a couple of known
+    // quirks, e.g. "the one with the broken AC".
+    nickname: z.string().min(1).openapi({ example: "The Fridge" }),
+    quirks: z.array(z.string()).default([]).openapi({ example: ["Broken AC", "Weak Wi-Fi"] }),
     capacity: z.number().int().positive().openapi({ example: 8 }),
     amenities: z.array(z.string()).default([]).openapi({ example: ["projector", "tv"] }),
   })
@@ -21,6 +27,8 @@ export const createRoomBodySchema = z
 export const updateRoomBodySchema = z
   .object({
     name: z.string().min(1).optional(),
+    nickname: z.string().min(1).optional(),
+    quirks: z.array(z.string()).optional(),
     capacity: z.number().int().positive().optional(),
     amenities: z.array(z.string()).optional(),
   })

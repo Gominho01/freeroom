@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import type { User } from "@prisma/client";
 import { prisma } from "../config/prisma.js";
@@ -12,6 +13,7 @@ export function toUserResponse(user: User) {
     id: user.id,
     email: user.email,
     name: user.name,
+    avatarSeed: user.avatarSeed,
     role: user.role,
     createdAt: user.createdAt.toISOString(),
   };
@@ -29,6 +31,7 @@ export async function registerUser(data: RegisterBody) {
       email: data.email,
       password: hashedPassword,
       name: data.name,
+      avatarSeed: data.avatarSeed ?? randomUUID(),
     },
   });
 

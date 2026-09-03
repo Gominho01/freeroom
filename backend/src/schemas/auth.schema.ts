@@ -5,6 +5,9 @@ export const registerBodySchema = z
     email: z.email().openapi({ example: "user@example.com" }),
     password: z.string().min(8).openapi({ example: "supersecret" }),
     name: z.string().min(1).openapi({ example: "Jane Doe" }),
+    // Seed for the DiceBear avatar (e.g. any word the user picks). Falls
+    // back to a random one server-side when omitted.
+    avatarSeed: z.string().min(1).optional().openapi({ example: "jane-doe" }),
   })
   .openapi("RegisterRequest");
 
@@ -20,6 +23,7 @@ export const userResponseSchema = z
     id: z.string(),
     email: z.email(),
     name: z.string(),
+    avatarSeed: z.string(),
     role: z.enum(["ADMIN", "USER"]),
     createdAt: z.string(),
   })

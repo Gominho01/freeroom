@@ -18,6 +18,8 @@ export function createRoom(data: CreateRoomBody) {
   return prisma.room.create({
     data: {
       name: data.name,
+      nickname: data.nickname,
+      quirks: data.quirks,
       capacity: data.capacity,
       amenities: data.amenities,
     },
