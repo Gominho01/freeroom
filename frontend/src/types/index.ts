@@ -11,3 +11,21 @@ export interface AuthResponse {
   token: string;
   user: User;
 }
+
+export interface Room {
+  id: string;
+  name: string;
+  nickname: string;
+  quirks: string[];
+  capacity: number;
+  amenities: string[];
+  createdAt: string;
+}
+
+export interface RoomInput {
+  name: string;
+  nickname: string;
+  quirks: string[];
+  capacity: number;
+  amenities: string[];
+}

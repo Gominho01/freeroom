@@ -1,0 +1,113 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { AvatarPreview } from '../components/AvatarPreview';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { RoomCard } from '../components/RoomCard';
+import { RoomFormModal } from '../components/RoomFormModal';
+import { createRoom, deleteRoom, listRooms, updateRoom } from '../services/rooms';
+import { useAuthStore } from '../store/auth';
+import type { Room, RoomInput } from '../types';
+
+export function RoomsPage() {
+  const token = useAuthStore((s) => s.token)!;
+  const user = useAuthStore((s) => s.user)!;
+  const logout = useAuthStore((s) => s.logout);
+  const isAdmin = user.role === 'ADMIN';
+
+  const queryClient = useQueryClient();
+  const [modalState, setModalState] = useState<{ room?: Room } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Room | null>(null);
+
+  const roomsQuery = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => listRooms(token),
+  });
+
+  function invalidateRooms() {
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+  }
+
+  const createMutation = useMutation({
+    mutationFn: (data: RoomInput) => createRoom(token, data),
+    onSuccess: invalidateRooms,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RoomInput }) => updateRoom(token, id, data),
+    onSuccess: invalidateRooms,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteRoom(token, id),
+    onSuccess: invalidateRooms,
+  });
+
+  function handleSave(data: RoomInput) {
+    if (modalState?.room) {
+      updateMutation.mutate({ id: modalState.room.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+    setModalState(null);
+  }
+
+  function handleConfirmDelete() {
+    if (!pendingDelete) return;
+    deleteMutation.mutate(pendingDelete.id);
+    setPendingDelete(null);
+  }
+
+  return (
+    <div className="rooms-page">
+      <header className="rooms-header">
+        <div className="rooms-header-user">
+          <AvatarPreview seed={user.avatarSeed} size={40} />
+          <span>{user.name}</span>
+        </div>
+        <div className="rooms-header-actions">
+          {isAdmin && (
+            <button type="button" onClick={() => setModalState({})}>
+              New room
+            </button>
+          )}
+          <button type="button" className="link-button" onClick={logout}>
+            Log out
+          </button>
+        </div>
+      </header>
+
+      {roomsQuery.isLoading && <p className="rooms-status">Loading rooms…</p>}
+      {roomsQuery.isError && <p className="rooms-status">Failed to load rooms.</p>}
+
+      {roomsQuery.data && roomsQuery.data.length === 0 && (
+        <p className="rooms-status">No rooms yet.{isAdmin && ' Create the first one above.'}</p>
+      )}
+
+      <div className="rooms-grid">
+        {roomsQuery.data?.map((room) => (
+          <RoomCard
+            key={room.id}
+            room={room}
+            isAdmin={isAdmin}
+            onEdit={(r) => setModalState({ room: r })}
+            onDelete={setPendingDelete}
+          />
+        ))}
+      </div>
+
+      {modalState && (
+        <RoomFormModal room={modalState.room} onSave={handleSave} onClose={() => setModalState(null)} />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete room"
+          message={`Delete "${pendingDelete.nickname}"? This can't be undone.`}
+          confirmLabel="Delete"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+    </div>
+  );
+}
