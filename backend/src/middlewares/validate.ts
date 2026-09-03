@@ -10,7 +10,13 @@ export function validateBody(schema: ZodType) {
 
 export function validateQuery(schema: ZodType) {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    req.query = schema.parse(req.query) as typeof req.query;
+    // Express 5 exposes `req.query` as a getter with no setter, so a plain
+    // assignment throws. Redefine the property instead of reassigning it.
+    Object.defineProperty(req, "query", {
+      value: schema.parse(req.query),
+      writable: true,
+      configurable: true,
+    });
     next();
   };
 }

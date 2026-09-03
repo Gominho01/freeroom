@@ -28,10 +28,16 @@ describe("Rooms", () => {
     const response = await request(app)
       .post("/rooms")
       .set("Authorization", `Bearer ${admin.token}`)
-      .send({ name: "Room A", capacity: 4, amenities: ["projector"] });
+      .send({ name: "Room A", nickname: "The Fridge", quirks: ["Broken AC"], capacity: 4, amenities: ["projector"] });
 
     expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({ name: "Room A", capacity: 4, amenities: ["projector"] });
+    expect(response.body).toMatchObject({
+      name: "Room A",
+      nickname: "The Fridge",
+      quirks: ["Broken AC"],
+      capacity: 4,
+      amenities: ["projector"],
+    });
   });
 
   it("forbids a regular user from creating a room", async () => {
@@ -40,7 +46,7 @@ describe("Rooms", () => {
     const response = await request(app)
       .post("/rooms")
       .set("Authorization", `Bearer ${user.token}`)
-      .send({ name: "Room B", capacity: 2, amenities: [] });
+      .send({ name: "Room B", nickname: "Room B", capacity: 2, amenities: [] });
 
     expect(response.status).toBe(403);
   });
@@ -61,7 +67,7 @@ describe("Rooms", () => {
     const created = await request(app)
       .post("/rooms")
       .set("Authorization", `Bearer ${admin.token}`)
-      .send({ name: "Room C", capacity: 6, amenities: ["tv"] });
+      .send({ name: "Room C", nickname: "Room C", capacity: 6, amenities: ["tv"] });
 
     const user = await createUser("USER");
 
@@ -93,7 +99,7 @@ describe("Rooms", () => {
     const created = await request(app)
       .post("/rooms")
       .set("Authorization", `Bearer ${admin.token}`)
-      .send({ name: "Room D", capacity: 3, amenities: [] });
+      .send({ name: "Room D", nickname: "Room D", capacity: 3, amenities: [] });
 
     const forbiddenUpdate = await request(app)
       .put(`/rooms/${created.body.id}`)
