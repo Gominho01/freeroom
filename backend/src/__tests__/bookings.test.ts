@@ -11,7 +11,12 @@ async function createRoom(adminToken: string, overrides: Partial<{ name: string;
   const response = await request(app)
     .post("/rooms")
     .set("Authorization", `Bearer ${adminToken}`)
-    .send({ name: overrides.name ?? "Room", capacity: overrides.capacity ?? 4, amenities: [] });
+    .send({
+      name: overrides.name ?? "Room",
+      nickname: overrides.name ?? "Room",
+      capacity: overrides.capacity ?? 4,
+      amenities: [],
+    });
   return response.body;
 }
 
