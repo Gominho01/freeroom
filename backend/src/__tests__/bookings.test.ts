@@ -40,8 +40,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     expect(response.status).toBe(201);
@@ -58,8 +58,25 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T11:00:00.000Z",
-        endTime: "2026-09-01T10:00:00.000Z",
+        startTime: "2030-01-01T11:00:00.000Z",
+        endTime: "2030-01-01T10:00:00.000Z",
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a booking that starts in the past", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    const response = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2020-01-01T10:00:00.000Z",
+        endTime: "2020-01-01T11:00:00.000Z",
       });
 
     expect(response.status).toBe(400);
@@ -75,8 +92,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     const conflicting = await request(app)
@@ -84,8 +101,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:30:00.000Z",
-        endTime: "2026-09-01T11:30:00.000Z",
+        startTime: "2030-01-01T10:30:00.000Z",
+        endTime: "2030-01-01T11:30:00.000Z",
       });
 
     expect(conflicting.status).toBe(409);
@@ -102,8 +119,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
     expect(first.status).toBe(201);
 
@@ -112,8 +129,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T11:00:00.000Z",
-        endTime: "2026-09-01T12:00:00.000Z",
+        startTime: "2030-01-01T11:00:00.000Z",
+        endTime: "2030-01-01T12:00:00.000Z",
       });
     expect(second.status).toBe(201);
   });
@@ -126,8 +143,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: "does-not-exist",
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     expect(response.status).toBe(404);
@@ -144,8 +161,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${userA.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     await request(app)
@@ -153,8 +170,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${userB.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T12:00:00.000Z",
-        endTime: "2026-09-01T13:00:00.000Z",
+        startTime: "2030-01-01T12:00:00.000Z",
+        endTime: "2030-01-01T13:00:00.000Z",
       });
 
     const asUserATryingToSeeUserB = await request(app)
@@ -187,8 +204,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: roomOne.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     await request(app)
@@ -196,8 +213,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         roomId: roomTwo.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     const response = await request(app)
@@ -220,8 +237,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${owner.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     const forbidden = await request(app)
@@ -239,8 +256,8 @@ describe("Bookings", () => {
       .set("Authorization", `Bearer ${owner.token}`)
       .send({
         roomId: room.id,
-        startTime: "2026-09-01T10:00:00.000Z",
-        endTime: "2026-09-01T11:00:00.000Z",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
       });
 
     const adminCancel = await request(app)

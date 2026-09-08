@@ -3,11 +3,12 @@ import type { Room } from '../types';
 interface RoomCardProps {
   room: Room;
   isAdmin: boolean;
+  onBook: (room: Room) => void;
   onEdit: (room: Room) => void;
   onDelete: (room: Room) => void;
 }
 
-export function RoomCard({ room, isAdmin, onEdit, onDelete }: RoomCardProps) {
+export function RoomCard({ room, isAdmin, onBook, onEdit, onDelete }: RoomCardProps) {
   return (
     <article className="room-card">
       <header className="room-card-header">
@@ -27,16 +28,21 @@ export function RoomCard({ room, isAdmin, onEdit, onDelete }: RoomCardProps) {
 
       {room.amenities.length > 0 && <p className="room-card-amenities">{room.amenities.join(' · ')}</p>}
 
-      {isAdmin && (
-        <div className="room-card-actions">
-          <button type="button" className="link-button" onClick={() => onEdit(room)}>
-            Edit
-          </button>
-          <button type="button" className="link-button danger-link" onClick={() => onDelete(room)}>
-            Delete
-          </button>
-        </div>
-      )}
+      <div className="room-card-actions">
+        <button type="button" className="link-button" onClick={() => onBook(room)}>
+          Book
+        </button>
+        {isAdmin && (
+          <>
+            <button type="button" className="link-button" onClick={() => onEdit(room)}>
+              Edit
+            </button>
+            <button type="button" className="link-button danger-link" onClick={() => onDelete(room)}>
+              Delete
+            </button>
+          </>
+        )}
+      </div>
     </article>
   );
 }

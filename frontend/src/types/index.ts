@@ -29,3 +29,12 @@ export interface RoomInput {
   capacity: number;
   amenities: string[];
 }
+
+export interface Booking {
+  id: string;
+  roomId: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+}
