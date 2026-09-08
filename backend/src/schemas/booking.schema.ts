@@ -16,18 +16,20 @@ export const bookingResponseSchema = z
 export const createBookingBodySchema = z
   .object({
     roomId: z.string().min(1).openapi({ example: "clx0000000000000000000000" }),
-    startTime: z.iso.datetime().openapi({ example: "2026-09-01T10:00:00.000Z" }),
-    endTime: z.iso.datetime().openapi({ example: "2026-09-01T11:00:00.000Z" }),
+    startTime: z.iso.datetime().openapi({ example: "2030-01-01T10:00:00.000Z" }),
+    endTime: z.iso.datetime().openapi({ example: "2030-01-01T11:00:00.000Z" }),
   })
   .openapi("CreateBookingRequest");
 
-export const createBookingSchema = createBookingBodySchema.refine(
-  (data) => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(),
-  {
+export const createBookingSchema = createBookingBodySchema
+  .refine((data) => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(), {
     message: "endTime must be after startTime",
     path: ["endTime"],
-  },
-);
+  })
+  .refine((data) => new Date(data.startTime).getTime() > Date.now(), {
+    message: "startTime must be in the future",
+    path: ["startTime"],
+  });
 
 export const listBookingsQuerySchema = z.object({
   roomId: z.string().min(1).optional(),
