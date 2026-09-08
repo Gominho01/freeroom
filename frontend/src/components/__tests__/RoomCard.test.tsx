@@ -15,7 +15,7 @@ const room: Room = {
 
 describe('RoomCard', () => {
   it('renders the room profile', () => {
-    render(<RoomCard room={room} isAdmin={false} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<RoomCard room={room} isAdmin={false} onBook={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
     expect(screen.getByText('The Fridge')).toBeInTheDocument();
     expect(screen.getByText('Conference Room A')).toBeInTheDocument();
@@ -24,19 +24,27 @@ describe('RoomCard', () => {
   });
 
   it('hides admin actions for a regular user', () => {
-    render(<RoomCard room={room} isAdmin={false} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<RoomCard room={room} isAdmin={false} onBook={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
   });
 
   it('lets an admin edit and delete the room', () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
-    render(<RoomCard room={room} isAdmin onEdit={onEdit} onDelete={onDelete} />);
+    render(<RoomCard room={room} isAdmin onBook={vi.fn()} onEdit={onEdit} onDelete={onDelete} />);
 
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));
     expect(onEdit).toHaveBeenCalledWith(room);
 
     fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     expect(onDelete).toHaveBeenCalledWith(room);
+  });
+
+  it('lets any user book the room', () => {
+    const onBook = vi.fn();
+    render(<RoomCard room={room} isAdmin={false} onBook={onBook} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /book/i }));
+    expect(onBook).toHaveBeenCalledWith(room);
   });
 });
