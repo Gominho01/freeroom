@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AvatarPreview } from '../components/AvatarPreview';
+import { BookingCalendarModal } from '../components/BookingCalendarModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { MyBookingsModal } from '../components/MyBookingsModal';
 import { RoomCard } from '../components/RoomCard';
 import { RoomFormModal } from '../components/RoomFormModal';
 import { createRoom, deleteRoom, listRooms, updateRoom } from '../services/rooms';
@@ -17,6 +19,8 @@ export function RoomsPage() {
   const queryClient = useQueryClient();
   const [modalState, setModalState] = useState<{ room?: Room } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Room | null>(null);
+  const [bookingRoom, setBookingRoom] = useState<Room | null>(null);
+  const [showMyBookings, setShowMyBookings] = useState(false);
 
   const roomsQuery = useQuery({
     queryKey: ['rooms'],
@@ -65,6 +69,9 @@ export function RoomsPage() {
           <span>{user.name}</span>
         </div>
         <div className="rooms-header-actions">
+          <button type="button" className="link-button" onClick={() => setShowMyBookings(true)}>
+            My bookings
+          </button>
           {isAdmin && (
             <button type="button" onClick={() => setModalState({})}>
               New room
@@ -89,6 +96,7 @@ export function RoomsPage() {
             key={room.id}
             room={room}
             isAdmin={isAdmin}
+            onBook={setBookingRoom}
             onEdit={(r) => setModalState({ room: r })}
             onDelete={setPendingDelete}
           />
@@ -107,6 +115,12 @@ export function RoomsPage() {
           onConfirm={handleConfirmDelete}
           onCancel={() => setPendingDelete(null)}
         />
+      )}
+
+      {bookingRoom && <BookingCalendarModal room={bookingRoom} onClose={() => setBookingRoom(null)} />}
+
+      {showMyBookings && (
+        <MyBookingsModal rooms={roomsQuery.data ?? []} onClose={() => setShowMyBookings(false)} />
       )}
     </div>
   );
