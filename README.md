@@ -1,6 +1,6 @@
 # SalaLivre — Meeting Room Booking System
 
-**Status:** 🚧 Planning / not yet implemented
+**Status:** 🚧 Phase 1 mostly implemented — auth, room catalog, and booking calendar are live; live room view is still pending. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
 
 ## Overview
 
@@ -72,10 +72,24 @@ The socket layer here only pushes state that's already fully determined by the s
 
 ## Roadmap
 
-1. **Phase 0** — scaffolding: Express + TS setup, Vite + TS setup, Postgres via Docker, Prisma schema (Room + profile, Booking, User + avatar).
-2. **Phase 1** — MVP: rooms with profiles, user avatars, availability calendar, conflict-safe booking, live room view with door animation, "my bookings," auth + roles.
-3. **Phase 2** — production deploy (frontend on Vercel, backend on Render/Railway) + managed Postgres, Swagger published.
-4. **Phase 3 (stretch)** — usage leaderboard, email notifications, recurring bookings, rate limiting.
+1. **Phase 0** — scaffolding: Express + TS setup, Vite + TS setup, Postgres via Docker, Prisma schema (Room + profile, Booking, User + avatar). ✅ done
+2. **Phase 1** — MVP:
+   - Auth + roles, user avatars (DiceBear seed). ✅ done
+   - Room catalog with profiles (nickname/quirks), admin management. ✅ done
+   - Availability list, conflict-safe booking, "my bookings." ✅ done
+   - Live room view — Socket.io broadcasting the current occupant, with the door handoff animation (Framer Motion). ⬜ pending — the one MVP piece still open
+3. **Phase 2 — analytics & engagement**
+   - Usage leaderboard ("busiest room this month").
+   - Admin dashboard: occupancy charts by room/day of week.
+4. **Phase 3 — notifications & recurrence**
+   - Email/in-app booking confirmation and reminders.
+   - Recurring bookings ("every Monday at 10am for 4 weeks").
+   - Waitlist for slots that are already booked.
+5. **Phase 4 — polish & deploy**
+   - Export a booking to a personal calendar (.ics).
+   - Room photo gallery.
+   - Rate limiting on booking-creation routes.
+   - Production deploy (frontend on Vercel, backend on Render/Railway) + managed Postgres, Swagger published.
 
 ## Project Structure (scaffold only, no logic yet)
 
