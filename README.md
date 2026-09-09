@@ -1,6 +1,6 @@
 # SalaLivre — Meeting Room Booking System
 
-**Status:** 🚧 Phase 1 mostly implemented — auth, room catalog, and booking calendar are live; live room view is still pending. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
+**Status:** ✅ Phase 1 (MVP) implemented — auth, room catalog, booking calendar, and the live pixel-art room view are all live. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
 
 ## Overview
 
@@ -31,10 +31,10 @@ Beyond the standard CRUD-plus-calendar booking app, each room has a "profile" �
 
 The signature animated moment is the **occupant handoff at the room door** — that's where the app spends its one piece of visual boldness. Everything else (calendar, forms, booking confirmation) stays quiet and functional; confirming a booking gets simple, direct feedback rather than competing for attention with the door animation.
 
-- **Palette:** a neutral, readable base (slate `#2B2D31`, off-white `#FAF9F6`) with a single vivid accent used on room profiles and the door animation (e.g. warm coral `#FF6B4A` or lime `#B8E23D` — pick one, not both).
-- **Typography:** a display face with some personality for room nicknames, paired with a neutral utility face (Inter or similar) for tables, forms, and the calendar.
+- **Visual style:** pixel-art / Gather-inspired — each room renders as a small blocky illustrated scene (wall, window, door, table, chairs) instead of a plain card. Avatars are DiceBear's `pixel-art` style, matching the same aesthetic. No 3D/isometric perspective — flat, front-facing, crisp edges (no anti-aliasing on the SVG shapes).
+- **Occupied vs. free:** the window/wall tint shifts (lit vs. dim) based on whether the room currently has an active booking — driven entirely by the schedule, no manual check-in.
+- **Room identity (planned, see Roadmap):** the scene itself should end up reflecting the room's own profile — quirks like "Broken AC" or amenities like "Projector"/"TV" rendered as recognizable details in the illustration, so rooms look different from each other, not just differently labeled.
 - **Microcopy:** written in the room's voice — "Sala Geladeira now hosting Ana until 3pm. Bring a jacket." rather than "Occupied."
-- **Empty state:** an unoccupied room gets its own calm illustration (closed door, light off) rather than a blank space.
 
 ## Tech Stack
 
@@ -74,13 +74,14 @@ The socket layer here only pushes state that's already fully determined by the s
 
 1. **Phase 0** — scaffolding: Express + TS setup, Vite + TS setup, Postgres via Docker, Prisma schema (Room + profile, Booking, User + avatar). ✅ done
 2. **Phase 1** — MVP:
-   - Auth + roles, user avatars (DiceBear seed). ✅ done
+   - Auth + roles, user avatars (DiceBear seed, pixel-art style). ✅ done
    - Room catalog with profiles (nickname/quirks), admin management. ✅ done
    - Availability list, conflict-safe booking, "my bookings." ✅ done
-   - Live room view — Socket.io broadcasting the current occupant, with the door handoff animation (Framer Motion). ⬜ pending — the one MVP piece still open
+   - Live room view — Socket.io broadcasting the current occupant, rendered as a small pixel-art room scene (Gather-inspired) with the door handoff animation (Framer Motion). ✅ done
 3. **Phase 2 — analytics & engagement**
    - Usage leaderboard ("busiest room this month").
    - Admin dashboard: occupancy charts by room/day of week.
+   - Trait-based room scenes — the illustration itself reflects the room's own profile instead of being identical everywhere: a room with the "Broken AC" quirk shows a visibly broken AC unit, "Projector"/"TV" amenities render as a screen on the wall, capacity roughly sets how much furniture is drawn. Turns the pixel-art scene into a real per-room visual identity, not just a stage for the occupant avatar.
 4. **Phase 3 — notifications & recurrence**
    - Email/in-app booking confirmation and reminders.
    - Recurring bookings ("every Monday at 10am for 4 weeks").
