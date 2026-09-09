@@ -7,7 +7,7 @@ describe('AvatarPreview', () => {
     render(<AvatarPreview seed="jane-doe" />);
 
     const img = screen.getByRole('img');
-    expect(img).toHaveAttribute('src', 'https://api.dicebear.com/9.x/avataaars/svg?seed=jane-doe');
+    expect(img).toHaveAttribute('src', 'https://api.dicebear.com/9.x/pixel-art/svg?seed=jane-doe');
   });
 
   it('renders an empty placeholder when the seed is blank', () => {

@@ -1,4 +1,8 @@
-import type { Room } from '../types';
+import { useEffect, useState } from 'react';
+import { RoomScene } from './RoomScene';
+import { watchRoom } from '../services/socket';
+import { useAuthStore } from '../store/auth';
+import type { Occupant, Room } from '../types';
 
 interface RoomCardProps {
   room: Room;
@@ -9,12 +13,21 @@ interface RoomCardProps {
 }
 
 export function RoomCard({ room, isAdmin, onBook, onEdit, onDelete }: RoomCardProps) {
+  const token = useAuthStore((s) => s.token)!;
+  const [occupant, setOccupant] = useState<Occupant | null>(null);
+
+  useEffect(() => {
+    return watchRoom(token, room.id, (payload) => setOccupant(payload.occupant));
+  }, [token, room.id]);
+
   return (
     <article className="room-card">
       <header className="room-card-header">
         <h2>{room.nickname}</h2>
         <span className="room-card-capacity">{room.capacity} seats</span>
       </header>
+
+      <RoomScene occupant={occupant} />
 
       <p className="room-card-name">{room.name}</p>
 

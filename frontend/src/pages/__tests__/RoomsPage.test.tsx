@@ -12,6 +12,12 @@ vi.mock('../../services/rooms', () => ({
   deleteRoom: vi.fn(),
 }));
 
+// Each RoomCard watches its own room's live occupant; the socket layer
+// itself is covered by RoomCard's own tests, so just stub it out here.
+vi.mock('../../services/socket', () => ({
+  watchRoom: vi.fn(() => vi.fn()),
+}));
+
 const user: User = {
   id: 'u1',
   email: 'admin@example.com',
