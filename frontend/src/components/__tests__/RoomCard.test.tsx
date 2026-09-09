@@ -1,7 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { RoomCard } from '../RoomCard';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { OccupantPayload } from '../../services/socket';
 import type { Room } from '../../types';
+
+const watchRoom = vi.fn();
+
+vi.mock('../../services/socket', () => ({
+  watchRoom: (...args: unknown[]) => watchRoom(...args),
+}));
+
+vi.mock('../../store/auth', () => ({
+  useAuthStore: (selector: (state: { token: string }) => unknown) => selector({ token: 'test-token' }),
+}));
+
+import { RoomCard } from '../RoomCard';
 
 const room: Room = {
   id: '1',
@@ -14,6 +26,11 @@ const room: Room = {
 };
 
 describe('RoomCard', () => {
+  beforeEach(() => {
+    watchRoom.mockReset();
+    watchRoom.mockReturnValue(vi.fn());
+  });
+
   it('renders the room profile', () => {
     render(<RoomCard room={room} isAdmin={false} onBook={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
@@ -46,5 +63,30 @@ describe('RoomCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /book/i }));
     expect(onBook).toHaveBeenCalledWith(room);
+  });
+
+  it('watches its own room and shows the current occupant', async () => {
+    let emit!: (payload: OccupantPayload) => void;
+    watchRoom.mockImplementation((_token: string, roomId: string, onOccupant: (p: OccupantPayload) => void) => {
+      expect(roomId).toBe(room.id);
+      emit = onOccupant;
+      return vi.fn();
+    });
+
+    render(<RoomCard room={room} isAdmin={false} onBook={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByLabelText(/room is free/i)).toBeInTheDocument();
+
+    emit({
+      roomId: room.id,
+      occupant: {
+        bookingId: 'b1',
+        endsAt: '2030-01-01T11:00:00.000Z',
+        user: { id: 'u1', name: 'Ada', avatarSeed: 'ada-seed' },
+      },
+    });
+
+    await waitFor(() => expect(screen.getByRole('img')).toBeInTheDocument());
+    expect(screen.queryByLabelText(/room is free/i)).not.toBeInTheDocument();
   });
 });
