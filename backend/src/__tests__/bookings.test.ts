@@ -191,6 +191,13 @@ describe("Bookings", () => {
     const asAdminSeeingAll = await request(app).get("/bookings").set("Authorization", `Bearer ${admin.token}`);
     expect(asAdminSeeingAll.status).toBe(200);
     expect(asAdminSeeingAll.body).toHaveLength(2);
+    // The admin sees everyone's bookings at once, so each one carries the
+    // owner's name — otherwise there'd be no way to tell whose is whose.
+    const byUserId = Object.fromEntries(
+      asAdminSeeingAll.body.map((b: { userId: string; user: { name: string } }) => [b.userId, b.user.name]),
+    );
+    expect(byUserId[userA.user.id]).toBe(userA.user.name);
+    expect(byUserId[userB.user.id]).toBe(userB.user.name);
   });
 
   it("filters bookings by roomId", async () => {

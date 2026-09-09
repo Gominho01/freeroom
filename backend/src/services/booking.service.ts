@@ -76,6 +76,9 @@ export function listBookings(filters: ListBookingsFilters) {
       ...(filters.from ? { endTime: { gt: filters.from } } : {}),
       ...(filters.to ? { startTime: { lt: filters.to } } : {}),
     },
+    // Admins can list every user's bookings (no userId filter); the owner's
+    // name rides along so the UI can tell whose booking is whose.
+    include: { user: { select: { id: true, name: true } } },
     orderBy: { startTime: "asc" },
   });
 }
