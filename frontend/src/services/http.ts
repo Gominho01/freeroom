@@ -12,7 +12,7 @@ export async function request<T>(path: string, token?: string, options: RequestI
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Request failed with status ${res.status}`);
+    throw new Error(body.error?.message ?? `Request failed with status ${res.status}`);
   }
 
   if (res.status === 204) {
