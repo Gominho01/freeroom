@@ -8,6 +8,9 @@ export const bookingResponseSchema = z
     startTime: z.string(),
     endTime: z.string(),
     createdAt: z.string(),
+    // Only populated by GET /bookings, where an admin can see every user's
+    // bookings — lets the UI show whose booking is whose.
+    user: z.object({ id: z.string(), name: z.string() }).optional(),
   })
   .openapi("Booking");
 

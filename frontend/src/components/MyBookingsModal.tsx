@@ -11,6 +11,8 @@ interface MyBookingsModalProps {
 
 export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
   const token = useAuthStore((s) => s.token)!;
+  const currentUser = useAuthStore((s) => s.user)!;
+  const isAdmin = currentUser.role === 'ADMIN';
   const queryClient = useQueryClient();
 
   // The backend ignores any userId filter for non-admins and always scopes
@@ -34,11 +36,11 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>My bookings</h2>
+        <h2>{isAdmin ? 'All bookings' : 'My bookings'}</h2>
 
         {bookingsQuery.isLoading && <p className="rooms-status">Loading…</p>}
         {bookings.length === 0 && !bookingsQuery.isLoading && (
-          <p className="rooms-status">You have no bookings yet.</p>
+          <p className="rooms-status">{isAdmin ? 'No bookings yet.' : 'You have no bookings yet.'}</p>
         )}
 
         <ul className="my-bookings-list">
@@ -50,6 +52,9 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
                   {format(new Date(booking.startTime), 'MMM d, HH:mm')} –{' '}
                   {format(new Date(booking.endTime), 'HH:mm')}
                 </p>
+                {isAdmin && booking.userId !== currentUser.id && (
+                  <p className="my-bookings-owner">Booked by {booking.user?.name ?? 'unknown user'}</p>
+                )}
               </div>
               <button
                 type="button"

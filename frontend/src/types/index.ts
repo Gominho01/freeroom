@@ -37,6 +37,9 @@ export interface Booking {
   startTime: string;
   endTime: string;
   createdAt: string;
+  // Only populated by GET /bookings, where an admin can see every user's
+  // bookings at once.
+  user?: { id: string; name: string };
 }
 
 export interface Occupant {
