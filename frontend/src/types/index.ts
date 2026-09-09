@@ -38,3 +38,13 @@ export interface Booking {
   endTime: string;
   createdAt: string;
 }
+
+export interface Occupant {
+  bookingId: string;
+  endsAt: string;
+  user: {
+    id: string;
+    name: string;
+    avatarSeed: string;
+  };
+}

@@ -214,6 +214,94 @@ button[type='submit'],
   gap: 12px;
 }
 
+/* Room scene — a small pixel-art room (Gather-style) instead of a plain box.
+   This is the app's one orchestrated animation: the current occupant
+   handing off at the door as bookings start/end, no manual check-in
+   involved. Colors are plain CSS vars (no color-mix) so this still renders
+   correctly on older browsers. */
+
+.room-scene {
+  --room-wall: var(--code-bg);
+  --room-baseboard: var(--border);
+  --room-floor: var(--bg);
+  --room-floor-alt: var(--code-bg);
+  --room-window: var(--border);
+  --room-door: var(--text);
+  --room-handle: var(--bg);
+  --room-furniture: var(--text);
+  --room-furniture-alt: var(--border);
+  --room-line: var(--border);
+
+  border-radius: 8px;
+  margin: 4px 0 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.room-scene[data-occupied='true'] {
+  --room-wall: var(--accent-bg);
+  --room-window: var(--accent);
+}
+
+.room-scene-bg {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.room-scene-wall {
+  fill: var(--room-wall);
+  transition: fill 0.3s ease;
+}
+
+.room-scene-baseboard {
+  fill: var(--room-baseboard);
+}
+
+.room-scene-floor {
+  fill: var(--room-floor);
+}
+
+.room-scene-floor-alt {
+  fill: var(--room-floor-alt);
+}
+
+.room-scene-window {
+  fill: var(--room-window);
+  transition: fill 0.3s ease;
+}
+
+.room-scene-line {
+  fill: var(--room-line);
+}
+
+.room-scene-door {
+  fill: var(--room-door);
+}
+
+.room-scene-handle {
+  fill: var(--room-handle);
+}
+
+.room-scene-furniture {
+  fill: var(--room-furniture);
+}
+
+.room-scene-furniture-alt {
+  fill: var(--room-furniture-alt);
+}
+
+.room-scene-avatar-slot {
+  bottom: 14%;
+  left: 8%;
+  position: absolute;
+  width: 16%;
+}
+
+.room-scene-avatar {
+  image-rendering: pixelated;
+}
+
 /* Room / card modal */
 
 .modal-backdrop {
@@ -382,5 +470,11 @@ button[type='submit'],
 .my-bookings-time {
   color: var(--text);
   font-size: 13px;
+  margin: 2px 0 0;
+}
+
+.my-bookings-owner {
+  color: var(--accent);
+  font-size: 12px;
   margin: 2px 0 0;
 }
