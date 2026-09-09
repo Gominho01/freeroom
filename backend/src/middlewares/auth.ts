@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { Role } from "@prisma/client";
+import { prisma } from "../config/prisma.js";
 import { verifyToken } from "../lib/jwt.js";
 import { ForbiddenError, UnauthorizedError } from "../lib/errors.js";
 
@@ -17,7 +18,7 @@ declare global {
   }
 }
 
-export function authenticate(req: Request, _res: Response, next: NextFunction): void {
+export async function authenticate(req: Request, _res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization;
 
   if (!header || !header.startsWith("Bearer ")) {
@@ -26,13 +27,24 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
 
   const token = header.slice("Bearer ".length);
 
+  let userId: string;
   try {
-    const payload = verifyToken(token);
-    req.user = { id: payload.id, role: payload.role };
-    next();
+    userId = verifyToken(token).id;
   } catch {
     throw new UnauthorizedError("Invalid or expired token");
   }
+
+  // The JWT signature alone doesn't prove the account still exists (or
+  // still has the role it had when the token was issued) — a deleted user
+  // would otherwise surface as a raw DB error on their next write instead
+  // of a clean "please log in again".
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true } });
+  if (!user) {
+    throw new UnauthorizedError("Your session is no longer valid — please log in again");
+  }
+
+  req.user = { id: user.id, role: user.role };
+  next();
 }
 
 export function requireRole(role: Role) {
