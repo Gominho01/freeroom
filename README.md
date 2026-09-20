@@ -1,6 +1,6 @@
 # SalaLivre — Meeting Room Booking System
 
-**Status:** ✅ Phase 2 implemented — auth, room catalog, booking calendar, the live pixel-art room view, the usage leaderboard, and the admin occupancy dashboard are all live. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
+**Status:** ✅ Phase 3 implemented — everything from Phase 2, plus a walkable, Gather-style world map (multiplayer avatars, a receptionist NPC) as an alternate way to get around. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
 
 ## Overview
 
@@ -26,8 +26,14 @@ Beyond the standard CRUD-plus-calendar booking app, each room has a "profile" �
 - **Admin occupancy dashboard** — booked minutes per room, broken down by day of week, as a small bar chart per room. ✅ done
 - **Trait-based room scenes** — the pixel-art illustration reflects the room's own profile: "Broken AC" renders a visibly broken AC unit, a projector/TV amenity renders as a wall-mounted screen, and capacity roughly sets how much furniture is drawn. ✅ done
 
+### Phase 3
+
+- **World map** — an alternate, opt-in view of the whole floor: every room as a walkable "building" (arrow keys/WASD), a receptionist NPC in the middle who can point you to free rooms, and everyone else currently on the map shown as a live avatar (Socket.io, in-memory only — no position is ever persisted). Walking up to a door or the receptionist and pressing E opens the same booking calendar / my-bookings / room-list UI the card view already has — the map is a different way to get there, not a different booking flow. ✅ done
+
 ### Roadmap / stretch goals
 
+- **In-map dialogue UI** — right now "press E" just opens the existing modals (calendar, my bookings, room list); a proper dialogue box / RPG-style menu for the receptionist and room doors would be more immersive, but is a lot more design and code than reusing what's already there.
+- **Map-only navigation** — dropping the card list entirely and making the world map the only way to browse/book rooms, once it's proven out as more than a novelty.
 - **Email notifications** — booking confirmation and reminders via Nodemailer, matching the app's tone of voice.
 - **Recurring bookings** — e.g. "every Monday at 10am for 4 weeks," reusing the same conflict-detection logic per occurrence.
 - **Rate limiting** — per-user/IP limits on booking-creation routes.
@@ -87,11 +93,14 @@ The socket layer here only pushes state that's already fully determined by the s
    - Usage leaderboard ("busiest room this month"). ✅ done
    - Admin dashboard: occupancy charts by room/day of week. ✅ done
    - Trait-based room scenes — the illustration itself reflects the room's own profile instead of being identical everywhere: a room with the "Broken AC" quirk shows a visibly broken AC unit, "Projector"/"TV" amenities render as a screen on the wall, capacity roughly sets how much furniture is drawn. Turns the pixel-art scene into a real per-room visual identity, not just a stage for the occupant avatar. ✅ done
-4. **Phase 3 — notifications & recurrence**
+4. **Phase 3 — world map**
+   - Walkable Gather-style map: every room as a building, a receptionist NPC pointing to free rooms, real-time avatars for everyone else on the map (Socket.io, in-memory presence only). ✅ done
+   - Reuses the existing booking calendar / my-bookings / room-list modals when you interact with a door or the receptionist, rather than a separate booking UI. ✅ done
+5. **Phase 4 — notifications & recurrence**
    - Email/in-app booking confirmation and reminders.
    - Recurring bookings ("every Monday at 10am for 4 weeks").
    - Waitlist for slots that are already booked.
-5. **Phase 4 — polish & deploy**
+6. **Phase 5 — polish & deploy**
    - Export a booking to a personal calendar (.ics).
    - Room photo gallery.
    - Rate limiting on booking-creation routes.
