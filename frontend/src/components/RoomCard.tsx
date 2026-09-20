@@ -27,7 +27,7 @@ export function RoomCard({ room, isAdmin, onBook, onEdit, onDelete }: RoomCardPr
         <span className="room-card-capacity">{room.capacity} seats</span>
       </header>
 
-      <RoomScene occupant={occupant} />
+      <RoomScene occupant={occupant} quirks={room.quirks} amenities={room.amenities} capacity={room.capacity} />
 
       <p className="room-card-name">{room.name}</p>
 
