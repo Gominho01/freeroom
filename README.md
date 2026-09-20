@@ -1,6 +1,6 @@
 # SalaLivre — Meeting Room Booking System
 
-**Status:** ✅ Phase 1 (MVP) implemented — auth, room catalog, booking calendar, and the live pixel-art room view are all live. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
+**Status:** ✅ Phase 2 implemented — auth, room catalog, booking calendar, the live pixel-art room view, the usage leaderboard, and the admin occupancy dashboard are all live. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
 
 ## Overview
 
@@ -20,9 +20,14 @@ Beyond the standard CRUD-plus-calendar booking app, each room has a "profile" �
 - **My bookings** — list of the user's own bookings with date-range filtering, and cancellation.
 - **Auth + role-based access** — login; admin dashboard (manages rooms and profiles) vs. regular user area (books/cancels their own bookings only).
 
+### Phase 2
+
+- **Usage leaderboard** — a lighthearted "busiest room this month" board (ranks rooms, not people). ✅ done
+- **Admin occupancy dashboard** — booked minutes per room, broken down by day of week, as a small bar chart per room. ✅ done
+- **Trait-based room scenes** — the pixel-art illustration reflects the room's own profile: "Broken AC" renders a visibly broken AC unit, a projector/TV amenity renders as a wall-mounted screen, and capacity roughly sets how much furniture is drawn. ✅ done
+
 ### Roadmap / stretch goals
 
-- **Usage leaderboard** — a lighthearted "busiest room this month" board (ranks rooms, not people).
 - **Email notifications** — booking confirmation and reminders via Nodemailer, matching the app's tone of voice.
 - **Recurring bookings** — e.g. "every Monday at 10am for 4 weeks," reusing the same conflict-detection logic per occurrence.
 - **Rate limiting** — per-user/IP limits on booking-creation routes.
@@ -79,9 +84,9 @@ The socket layer here only pushes state that's already fully determined by the s
    - Availability list, conflict-safe booking, "my bookings." ✅ done
    - Live room view — Socket.io broadcasting the current occupant, rendered as a small pixel-art room scene (Gather-inspired) with the door handoff animation (Framer Motion). ✅ done
 3. **Phase 2 — analytics & engagement**
-   - Usage leaderboard ("busiest room this month").
-   - Admin dashboard: occupancy charts by room/day of week.
-   - Trait-based room scenes — the illustration itself reflects the room's own profile instead of being identical everywhere: a room with the "Broken AC" quirk shows a visibly broken AC unit, "Projector"/"TV" amenities render as a screen on the wall, capacity roughly sets how much furniture is drawn. Turns the pixel-art scene into a real per-room visual identity, not just a stage for the occupant avatar.
+   - Usage leaderboard ("busiest room this month"). ✅ done
+   - Admin dashboard: occupancy charts by room/day of week. ✅ done
+   - Trait-based room scenes — the illustration itself reflects the room's own profile instead of being identical everywhere: a room with the "Broken AC" quirk shows a visibly broken AC unit, "Projector"/"TV" amenities render as a screen on the wall, capacity roughly sets how much furniture is drawn. Turns the pixel-art scene into a real per-room visual identity, not just a stage for the occupant avatar. ✅ done
 4. **Phase 3 — notifications & recurrence**
    - Email/in-app booking confirmation and reminders.
    - Recurring bookings ("every Monday at 10am for 4 weeks").
