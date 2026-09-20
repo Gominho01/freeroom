@@ -51,3 +51,11 @@ export interface Occupant {
     avatarSeed: string;
   };
 }
+
+export interface LeaderboardEntry {
+  roomId: string;
+  name: string;
+  nickname: string;
+  bookingCount: number;
+  totalMinutes: number;
+}
