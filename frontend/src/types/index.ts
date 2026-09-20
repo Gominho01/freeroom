@@ -68,3 +68,11 @@ export interface OccupancyEntry {
   nickname: string;
   minutesByDay: Record<DayOfWeek, number>;
 }
+
+export interface WorldPlayer {
+  id: string;
+  name: string;
+  avatarSeed: string;
+  x: number;
+  y: number;
+}
