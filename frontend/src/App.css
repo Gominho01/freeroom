@@ -231,6 +231,9 @@ button[type='submit'],
   --room-furniture: var(--text);
   --room-furniture-alt: var(--border);
   --room-line: var(--border);
+  --room-light: var(--border);
+  --room-rug: var(--code-bg);
+  --room-rug-border: var(--border);
 
   border-radius: 8px;
   margin: 4px 0 10px;
@@ -241,6 +244,8 @@ button[type='submit'],
 .room-scene[data-occupied='true'] {
   --room-wall: var(--accent-bg);
   --room-window: var(--accent);
+  --room-light: var(--accent);
+  --room-rug-border: var(--accent);
 }
 
 .room-scene-bg {
@@ -307,6 +312,53 @@ button[type='submit'],
   fill: none;
   stroke: #d64545;
   stroke-width: 1.5;
+}
+
+.room-scene-ac-vent {
+  fill: var(--room-wall);
+}
+
+.room-scene-ac-drip {
+  fill: #d64545;
+}
+
+.room-scene-screen-mount {
+  fill: var(--room-furniture-alt);
+}
+
+.room-scene-screen-led {
+  fill: #4caf6d;
+}
+
+.room-scene-light {
+  fill: var(--room-light);
+  transition: fill 0.3s ease;
+}
+
+.room-scene-rug-border {
+  fill: var(--room-rug-border);
+  transition: fill 0.3s ease;
+}
+
+.room-scene-rug {
+  fill: var(--room-rug);
+}
+
+.room-scene-plant-pot {
+  fill: #8b5e3c;
+}
+
+.room-scene-plant-leaf {
+  fill: #4a7c59;
+}
+
+.room-scene-chair-back {
+  fill: var(--room-furniture);
+}
+
+.room-scene-table-shadow {
+  fill: var(--room-baseboard);
+  opacity: 0.5;
 }
 
 .room-scene-avatar-slot {
