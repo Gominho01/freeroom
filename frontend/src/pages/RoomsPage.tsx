@@ -4,6 +4,7 @@ import { AvatarPreview } from '../components/AvatarPreview';
 import { BookingCalendarModal } from '../components/BookingCalendarModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LeaderboardModal } from '../components/LeaderboardModal';
+import { WorldMap } from '../components/map/WorldMap';
 import { MyBookingsModal } from '../components/MyBookingsModal';
 import { OccupancyDashboardModal } from '../components/OccupancyDashboardModal';
 import { RoomCard } from '../components/RoomCard';
@@ -25,6 +26,7 @@ export function RoomsPage() {
   const [showMyBookings, setShowMyBookings] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showOccupancy, setShowOccupancy] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const roomsQuery = useQuery({
     queryKey: ['rooms'],
@@ -79,6 +81,9 @@ export function RoomsPage() {
           <button type="button" className="link-button" onClick={() => setShowLeaderboard(true)}>
             Leaderboard
           </button>
+          <button type="button" className="link-button" onClick={() => setShowMap((v) => !v)}>
+            {showMap ? 'List view' : 'Map view'}
+          </button>
           {isAdmin && (
             <button type="button" className="link-button" onClick={() => setShowOccupancy(true)}>
               Occupancy dashboard
@@ -102,18 +107,22 @@ export function RoomsPage() {
         <p className="rooms-status">No rooms yet.{isAdmin && ' Create the first one above.'}</p>
       )}
 
-      <div className="rooms-grid">
-        {roomsQuery.data?.map((room) => (
-          <RoomCard
-            key={room.id}
-            room={room}
-            isAdmin={isAdmin}
-            onBook={setBookingRoom}
-            onEdit={(r) => setModalState({ room: r })}
-            onDelete={setPendingDelete}
-          />
-        ))}
-      </div>
+      {roomsQuery.data && roomsQuery.data.length > 0 && showMap ? (
+        <WorldMap rooms={roomsQuery.data} />
+      ) : (
+        <div className="rooms-grid">
+          {roomsQuery.data?.map((room) => (
+            <RoomCard
+              key={room.id}
+              room={room}
+              isAdmin={isAdmin}
+              onBook={setBookingRoom}
+              onEdit={(r) => setModalState({ room: r })}
+              onDelete={setPendingDelete}
+            />
+          ))}
+        </div>
+      )}
 
       {modalState && (
         <RoomFormModal room={modalState.room} onSave={handleSave} onClose={() => setModalState(null)} />

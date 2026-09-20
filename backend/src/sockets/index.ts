@@ -1,12 +1,23 @@
 import type { Server, Socket } from "socket.io";
+import { prisma } from "../config/prisma.js";
 import { verifyToken } from "../lib/jwt.js";
 import { getCurrentOccupant } from "../services/occupancy.service.js";
 
 const POLL_INTERVAL_MS = 10_000;
 const ROOM_PREFIX = "room:";
+const WORLD_CHANNEL = "world";
+const WORLD_SPAWN = { x: 420, y: 300 };
 
 function roomChannel(roomId: string): string {
   return `${ROOM_PREFIX}${roomId}`;
+}
+
+export interface WorldPlayer {
+  id: string;
+  name: string;
+  avatarSeed: string;
+  x: number;
+  y: number;
 }
 
 /**
@@ -33,6 +44,7 @@ export async function pollRoomOccupancy(io: Server, lastKnown: Map<string, strin
 
 export function registerSocketHandlers(io: Server): void {
   const lastKnown = new Map<string, string | null>();
+  const worldPlayers = new Map<string, WorldPlayer>();
 
   // Reject the handshake outright if the JWT is missing/invalid — occupancy
   // data is only exposed to authenticated users, same as the REST API.
@@ -43,7 +55,7 @@ export function registerSocketHandlers(io: Server): void {
       return;
     }
     try {
-      verifyToken(token);
+      socket.data.userId = verifyToken(token).id;
       next();
     } catch {
       next(new Error("unauthorized"));
@@ -51,6 +63,44 @@ export function registerSocketHandlers(io: Server): void {
   });
 
   io.on("connection", (socket: Socket) => {
+    // World map — a lightweight, in-memory-only presence channel: avatar
+    // positions aren't booking data, so nothing here touches Postgres beyond
+    // reading the joiner's own profile once.
+    socket.on("world:join", async () => {
+      const user = await prisma.user.findUnique({
+        where: { id: socket.data.userId as string },
+        select: { id: true, name: true, avatarSeed: true },
+      });
+      if (!user) return;
+
+      const player: WorldPlayer = { ...user, ...WORLD_SPAWN };
+      worldPlayers.set(socket.id, player);
+      socket.join(WORLD_CHANNEL);
+
+      socket.emit("world:players", [...worldPlayers.values()]);
+      socket.to(WORLD_CHANNEL).emit("world:player-joined", player);
+    });
+
+    socket.on("world:move", (rawPosition: unknown) => {
+      const player = worldPlayers.get(socket.id);
+      if (!player) return;
+
+      const position = rawPosition as { x?: unknown; y?: unknown } | null;
+      if (typeof position?.x !== "number" || typeof position?.y !== "number") return;
+
+      player.x = position.x;
+      player.y = position.y;
+      socket.to(WORLD_CHANNEL).emit("world:player-moved", { id: player.id, x: player.x, y: player.y });
+    });
+
+    socket.on("disconnect", () => {
+      const player = worldPlayers.get(socket.id);
+      if (!player) return;
+
+      worldPlayers.delete(socket.id);
+      socket.to(WORLD_CHANNEL).emit("world:player-left", { id: player.id });
+    });
+
     socket.on("room:watch", async (rawRoomId: unknown) => {
       if (typeof rawRoomId !== "string" || !rawRoomId) {
         socket.emit("error", { message: "Invalid roomId" });
