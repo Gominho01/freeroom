@@ -291,6 +291,24 @@ button[type='submit'],
   fill: var(--room-furniture-alt);
 }
 
+.room-scene-screen-frame {
+  fill: var(--room-furniture);
+}
+
+.room-scene-screen {
+  fill: var(--room-window);
+}
+
+.room-scene-ac {
+  fill: var(--room-furniture-alt);
+}
+
+.room-scene-ac-broken {
+  fill: none;
+  stroke: #d64545;
+  stroke-width: 1.5;
+}
+
 .room-scene-avatar-slot {
   bottom: 14%;
   left: 8%;
