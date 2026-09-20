@@ -1,6 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "../lib/zod.js";
-import { leaderboardEntrySchema } from "../schemas/analytics.schema.js";
+import { leaderboardEntrySchema, occupancyEntrySchema } from "../schemas/analytics.schema.js";
 import { authResponseSchema, loginBodySchema, registerBodySchema } from "../schemas/auth.schema.js";
 import {
   bookingIdParamsSchema,
@@ -176,6 +176,20 @@ registry.registerPath({
   security: authenticated,
   responses: {
     200: { description: "Rooms ranked by usage this month", ...jsonContent(z.array(leaderboardEntrySchema)) },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/analytics/occupancy",
+  tags: ["Analytics"],
+  security: authenticated,
+  responses: {
+    200: {
+      description: "Booked minutes per room, broken down by day of week",
+      ...jsonContent(z.array(occupancyEntrySchema)),
+    },
+    403: { description: "Admin role required", ...jsonContent(errorResponseSchema) },
   },
 });
 

@@ -59,3 +59,12 @@ export interface LeaderboardEntry {
   bookingCount: number;
   totalMinutes: number;
 }
+
+export type DayOfWeek = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
+
+export interface OccupancyEntry {
+  roomId: string;
+  name: string;
+  nickname: string;
+  minutesByDay: Record<DayOfWeek, number>;
+}

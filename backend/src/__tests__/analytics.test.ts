@@ -84,4 +84,46 @@ describe("Analytics", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual([]);
   });
+
+  it("requires authentication to view the occupancy dashboard", async () => {
+    const response = await request(app).get("/analytics/occupancy");
+    expect(response.status).toBe(401);
+  });
+
+  it("forbids a regular user from viewing the occupancy dashboard", async () => {
+    const user = await createUser("USER");
+
+    const response = await request(app).get("/analytics/occupancy").set("Authorization", `Bearer ${user.token}`);
+
+    expect(response.status).toBe(403);
+  });
+
+  it("breaks down booked minutes by day of week for an admin, regardless of month", async () => {
+    const admin = await createUser("ADMIN");
+
+    const room = await prisma.room.create({
+      data: { name: "Room A", nickname: "The Fridge", capacity: 4, amenities: [] },
+    });
+
+    await prisma.booking.create({
+      data: {
+        roomId: room.id,
+        userId: admin.user.id,
+        // 2030-01-07 is a Monday.
+        startTime: new Date("2030-01-07T10:00:00.000Z"),
+        endTime: new Date("2030-01-07T11:00:00.000Z"),
+      },
+    });
+
+    const response = await request(app).get("/analytics/occupancy").set("Authorization", `Bearer ${admin.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([
+      expect.objectContaining({
+        roomId: room.id,
+        nickname: "The Fridge",
+        minutesByDay: expect.objectContaining({ Mon: 60 }),
+      }),
+    ]);
+  });
 });
