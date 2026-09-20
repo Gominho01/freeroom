@@ -13,6 +13,7 @@ import { env } from "../config/env.js";
 vi.mock("../config/prisma.js", () => ({
   prisma: {
     booking: { findFirst: vi.fn() },
+    user: { findUnique: vi.fn() },
   },
 }));
 
@@ -125,6 +126,111 @@ describe("room:watch", () => {
     await expect(errorEvent).resolves.toEqual({ message: "Invalid roomId" });
 
     socket.close();
+  });
+});
+
+describe("world map", () => {
+  const USERS: Record<string, { id: string; name: string; avatarSeed: string }> = {
+    watcher: { id: "watcher", name: "Watcher", avatarSeed: "watcher-seed" },
+    u1: { id: "u1", name: "Ada", avatarSeed: "ada-seed" },
+    u2: { id: "u2", name: "Bob", avatarSeed: "bob-seed" },
+    u3: { id: "u3", name: "Cy", avatarSeed: "cy-seed" },
+    u4: { id: "u4", name: "Dee", avatarSeed: "dee-seed" },
+  };
+
+  beforeAll(() => {
+    // Shared across every test in this file's lifetime, so look the user up
+    // by the id the socket authenticated with instead of a single fixed
+    // return value — both the watcher and the subject under test join the
+    // same world channel and each needs their own identity.
+    vi.mocked(prisma.user.findUnique).mockImplementation(
+      (async (args: { where: { id: string } }) => USERS[args.where.id] ?? null) as typeof prisma.user.findUnique,
+    );
+  });
+
+  async function connectWatcher(token: string) {
+    const watcher = await connectClient(makeToken(token));
+    watcher.emit("world:join");
+    await waitFor(watcher, "world:players");
+    return watcher;
+  }
+
+  it("sends the joiner a players snapshot and tells everyone else they joined", async () => {
+    const watcher = await connectWatcher("watcher");
+    const joiner = await connectClient(makeToken("u1"));
+
+    const joinedEvent = waitFor<{ id: string; name: string }>(watcher, "world:player-joined");
+    const snapshotEvent = waitFor<Array<{ id: string }>>(joiner, "world:players");
+
+    joiner.emit("world:join");
+
+    await expect(snapshotEvent).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "u1", name: "Ada", avatarSeed: "ada-seed" })]),
+    );
+    await expect(joinedEvent).resolves.toMatchObject({ id: "u1", name: "Ada" });
+
+    watcher.close();
+    joiner.close();
+  });
+
+  it("broadcasts a moved player's new position to everyone else, not back to themselves", async () => {
+    const watcher = await connectWatcher("watcher");
+    const mover = await connectClient(makeToken("u2"));
+
+    const joined = waitFor(watcher, "world:player-joined");
+    mover.emit("world:join");
+    await joined;
+
+    let echoedToSelf = false;
+    mover.once("world:player-moved", () => {
+      echoedToSelf = true;
+    });
+    const movedEvent = waitFor<{ id: string; x: number; y: number }>(watcher, "world:player-moved");
+
+    mover.emit("world:move", { x: 120, y: 80 });
+
+    await expect(movedEvent).resolves.toEqual({ id: "u2", x: 120, y: 80 });
+    expect(echoedToSelf).toBe(false);
+
+    watcher.close();
+    mover.close();
+  });
+
+  it("ignores a malformed move payload instead of broadcasting garbage", async () => {
+    const watcher = await connectWatcher("watcher");
+    const mover = await connectClient(makeToken("u3"));
+
+    const joined = waitFor(watcher, "world:player-joined");
+    mover.emit("world:join");
+    await joined;
+
+    let broadcast = false;
+    watcher.once("world:player-moved", () => {
+      broadcast = true;
+    });
+    mover.emit("world:move", { x: "not-a-number" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(broadcast).toBe(false);
+
+    watcher.close();
+    mover.close();
+  });
+
+  it("tells everyone else a player left when they disconnect", async () => {
+    const watcher = await connectWatcher("watcher");
+    const leaver = await connectClient(makeToken("u4"));
+
+    const joined = waitFor(watcher, "world:player-joined");
+    leaver.emit("world:join");
+    await joined;
+
+    const leftEvent = waitFor<{ id: string }>(watcher, "world:player-left");
+    leaver.close();
+
+    await expect(leftEvent).resolves.toEqual({ id: "u4" });
+
+    watcher.close();
   });
 });
 
