@@ -58,39 +58,70 @@ export function RoomScene({ occupant, quirks = [], amenities = [], capacity = 6 
         <rect x="80" y="80" width="20" height="40" className="room-scene-floor-alt" />
         <rect x="120" y="80" width="20" height="40" className="room-scene-floor-alt" />
 
+        {/* rug — a flat border-in-border rect, a common pixel-art shading trick */}
+        <rect x="46" y="84" width="68" height="30" className="room-scene-rug-border" />
+        <rect x="49" y="86" width="62" height="26" className="room-scene-rug" />
+
         {/* window */}
         <rect x="104" y="12" width="40" height="32" className="room-scene-window" />
         <rect x="122" y="12" width="4" height="32" className="room-scene-line" />
         <rect x="104" y="26" width="40" height="4" className="room-scene-line" />
 
-        {/* door */}
+        {/* door, with a small pane for a bit of depth */}
         <rect x="8" y="24" width="24" height="56" className="room-scene-door" />
+        <rect x="12" y="30" width="16" height="10" className="room-scene-line" />
         <rect x="26" y="48" width="4" height="4" className="room-scene-handle" />
+
+        {/* ceiling light — warms up along with the window when someone's in */}
+        <rect x="72" y="0" width="16" height="3" className="room-scene-light" />
+
+        {/* potted plant — purely decorative, every room gets one */}
+        <rect x="4" y="106" width="12" height="4" className="room-scene-plant-pot" />
+        <rect x="6" y="102" width="8" height="4" className="room-scene-plant-pot" />
+        <rect x="2" y="92" width="4" height="10" className="room-scene-plant-leaf" />
+        <rect x="14" y="92" width="4" height="10" className="room-scene-plant-leaf" />
+        <rect x="7" y="88" width="6" height="12" className="room-scene-plant-leaf" />
 
         {/* wall-mounted screen — shown when the room has a projector or TV */}
         {hasScreen(amenities) && (
           <>
             <rect x="40" y="4" width="56" height="18" className="room-scene-screen-frame" />
             <rect x="43" y="7" width="50" height="12" className="room-scene-screen" />
+            <rect x="64" y="22" width="8" height="3" className="room-scene-screen-mount" />
+            <rect x="92" y="9" width="2" height="2" className="room-scene-screen-led" />
           </>
         )}
 
-        {/* AC unit — shown broken when the room carries that quirk */}
-        {hasBrokenAC(quirks) && (
+        {/* AC unit — vented, shown broken (with a drip) when the room carries that quirk */}
+        {hasBrokenAC(quirks) ? (
           <>
             <rect x="112" y="2" width="24" height="8" className="room-scene-ac" />
+            <rect x="115" y="4" width="18" height="1" className="room-scene-ac-vent" />
+            <rect x="115" y="6" width="18" height="1" className="room-scene-ac-vent" />
             <path d="M112 2 L136 10 M136 2 L112 10" className="room-scene-ac-broken" />
+            <rect x="123" y="10" width="2" height="4" className="room-scene-ac-drip" />
+          </>
+        ) : (
+          <>
+            <rect x="112" y="2" width="24" height="8" className="room-scene-ac" />
+            <rect x="115" y="4" width="18" height="1" className="room-scene-ac-vent" />
+            <rect x="115" y="6" width="18" height="1" className="room-scene-ac-vent" />
           </>
         )}
 
         {/* table + chairs, roughly scaled to how many people the room seats */}
+        <rect x="54" y="74" width="52" height="3" className="room-scene-table-shadow" />
         <rect x="56" y="64" width="48" height="8" className="room-scene-furniture" />
         <rect x="60" y="72" width="6" height="10" className="room-scene-furniture" />
+        <rect x="59" y="70" width="8" height="3" className="room-scene-chair-back" />
         <rect x="98" y="72" width="6" height="10" className="room-scene-furniture" />
+        <rect x="97" y="70" width="8" height="3" className="room-scene-chair-back" />
         {tier !== 'small' && (
           <>
             <rect x="44" y="70" width="10" height="10" className="room-scene-furniture-alt" />
+            <rect x="43" y="68" width="12" height="3" className="room-scene-chair-back" />
             <rect x="106" y="70" width="10" height="10" className="room-scene-furniture-alt" />
+            <rect x="105" y="68" width="12" height="3" className="room-scene-chair-back" />
           </>
         )}
         {tier === 'large' && (
