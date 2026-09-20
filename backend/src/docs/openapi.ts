@@ -1,5 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "../lib/zod.js";
+import { leaderboardEntrySchema } from "../schemas/analytics.schema.js";
 import { authResponseSchema, loginBodySchema, registerBodySchema } from "../schemas/auth.schema.js";
 import {
   bookingIdParamsSchema,
@@ -163,6 +164,18 @@ registry.registerPath({
     204: { description: "Booking cancelled" },
     403: { description: "Not the booking owner", ...jsonContent(errorResponseSchema) },
     404: { description: "Booking not found", ...jsonContent(errorResponseSchema) },
+  },
+});
+
+// --- Analytics ---
+
+registry.registerPath({
+  method: "get",
+  path: "/analytics/leaderboard",
+  tags: ["Analytics"],
+  security: authenticated,
+  responses: {
+    200: { description: "Rooms ranked by usage this month", ...jsonContent(z.array(leaderboardEntrySchema)) },
   },
 });
 
