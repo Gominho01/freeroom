@@ -677,3 +677,162 @@ label.trait-checkbox {
   font-size: 11px;
   margin-top: 4px;
 }
+
+/* World map — a walkable, Gather-inspired view of all rooms at once */
+
+.world-viewport {
+  overflow: auto;
+  padding: 24px;
+}
+
+.world-map {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.world-building {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  position: absolute;
+  transition: border-color 0.3s ease;
+}
+
+.world-building[data-occupied='true'] {
+  border-color: var(--accent);
+}
+
+.world-building-door {
+  background: var(--border);
+  border-radius: 3px 3px 0 0;
+  bottom: 0;
+  height: 24px;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 20px;
+}
+
+.world-building-status {
+  background: #4caf6d;
+  border-radius: 50%;
+  height: 8px;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 8px;
+}
+
+.world-building[data-occupied='true'] .world-building-status {
+  background: var(--accent);
+}
+
+.world-building-label {
+  color: var(--text-h);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  position: absolute;
+  text-align: center;
+  top: 10px;
+  width: 100%;
+}
+
+.world-receptionist {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: absolute;
+}
+
+.world-receptionist-label {
+  color: var(--text);
+  font-size: 11px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.world-avatar {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.world-avatar:not(.world-avatar-self) {
+  transition:
+    left 0.12s linear,
+    top 0.12s linear;
+}
+
+.world-avatar-name {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+.world-hint {
+  background: var(--accent);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+}
+
+.world-controls-hint {
+  color: var(--text);
+  font-size: 13px;
+  margin: 0 24px;
+}
+
+.receptionist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.receptionist-list li {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+
+.receptionist-room-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.receptionist-status-free {
+  color: #4caf6d;
+  font-size: 13px;
+  margin: 2px 0 0;
+}
+
+.receptionist-status-busy {
+  color: var(--accent);
+  font-size: 13px;
+  margin: 2px 0 0;
+}
