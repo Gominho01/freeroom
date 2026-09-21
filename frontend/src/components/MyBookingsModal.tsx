@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { cancelBooking, listBookings } from '../services/bookings';
+import { cancelBooking, cancelBookingSeries, listBookings } from '../services/bookings';
 import { useAuthStore } from '../store/auth';
 import type { Room } from '../types';
 
@@ -17,13 +17,20 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
 
   // The backend ignores any userId filter for non-admins and always scopes
   // the result to the requester, so an unfiltered call is already "mine".
+  // `from` excludes bookings that have already ended — nothing left to
+  // cancel there, and without it the list only grows forever.
   const bookingsQuery = useQuery({
     queryKey: ['my-bookings'],
-    queryFn: () => listBookings(token),
+    queryFn: () => listBookings(token, { from: new Date().toISOString() }),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelBooking(token, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+  });
+
+  const cancelSeriesMutation = useMutation({
+    mutationFn: (recurrenceId: string) => cancelBookingSeries(token, recurrenceId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
   });
 
@@ -47,7 +54,10 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
           {bookings.map((booking) => (
             <li key={booking.id}>
               <div>
-                <p className="my-bookings-room">{roomLabel(booking.roomId)}</p>
+                <p className="my-bookings-room">
+                  {roomLabel(booking.roomId)}
+                  {booking.recurrenceId && <span className="my-bookings-recurring">Weekly series</span>}
+                </p>
                 <p className="my-bookings-time">
                   {format(new Date(booking.startTime), 'MMM d, HH:mm')} –{' '}
                   {format(new Date(booking.endTime), 'HH:mm')}
@@ -56,13 +66,24 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
                   <p className="my-bookings-owner">Booked by {booking.user?.name ?? 'unknown user'}</p>
                 )}
               </div>
-              <button
-                type="button"
-                className="link-button danger-link"
-                onClick={() => cancelMutation.mutate(booking.id)}
-              >
-                Cancel
-              </button>
+              <div className="my-bookings-actions">
+                <button
+                  type="button"
+                  className="link-button danger-link"
+                  onClick={() => cancelMutation.mutate(booking.id)}
+                >
+                  Cancel
+                </button>
+                {booking.recurrenceId && (
+                  <button
+                    type="button"
+                    className="link-button danger-link"
+                    onClick={() => cancelSeriesMutation.mutate(booking.recurrenceId!)}
+                  >
+                    Cancel series
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

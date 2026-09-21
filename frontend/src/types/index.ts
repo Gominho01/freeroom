@@ -37,6 +37,9 @@ export interface Booking {
   startTime: string;
   endTime: string;
   createdAt: string;
+  // Set on every occurrence of a recurring booking, sharing one value per
+  // series — null/absent for a one-off.
+  recurrenceId?: string | null;
   // Only populated by GET /bookings, where an admin can see every user's
   // bookings at once.
   user?: { id: string; name: string };

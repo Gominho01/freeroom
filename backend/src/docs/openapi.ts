@@ -7,6 +7,7 @@ import {
   bookingResponseSchema,
   createBookingBodySchema,
   listBookingsQuerySchema,
+  recurrenceIdParamsSchema,
 } from "../schemas/booking.schema.js";
 import {
   createRoomBodySchema,
@@ -136,10 +137,13 @@ registry.registerPath({
   security: authenticated,
   request: { body: jsonContent(createBookingBodySchema) },
   responses: {
-    201: { description: "Booking created", ...jsonContent(bookingResponseSchema) },
+    201: {
+      description: "Booking created — an array of one Booking per occurrence when `recurrence` was set",
+      ...jsonContent(bookingResponseSchema),
+    },
     400: { description: "Validation error", ...jsonContent(errorResponseSchema) },
     404: { description: "Room not found", ...jsonContent(errorResponseSchema) },
-    409: { description: "Time slot conflict", ...jsonContent(errorResponseSchema) },
+    409: { description: "Time slot conflict for the booking, or for one of the series' occurrences", ...jsonContent(errorResponseSchema) },
   },
 });
 
@@ -151,6 +155,19 @@ registry.registerPath({
   request: { query: listBookingsQuerySchema },
   responses: {
     200: { description: "List of bookings", ...jsonContent(z.array(bookingResponseSchema)) },
+  },
+});
+
+registry.registerPath({
+  method: "delete",
+  path: "/bookings/series/{recurrenceId}",
+  tags: ["Bookings"],
+  security: authenticated,
+  request: { params: recurrenceIdParamsSchema },
+  responses: {
+    204: { description: "Every occurrence in the series cancelled" },
+    403: { description: "Not the series owner", ...jsonContent(errorResponseSchema) },
+    404: { description: "Booking series not found", ...jsonContent(errorResponseSchema) },
   },
 });
 

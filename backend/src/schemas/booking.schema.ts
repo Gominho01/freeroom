@@ -8,6 +8,9 @@ export const bookingResponseSchema = z
     startTime: z.string(),
     endTime: z.string(),
     createdAt: z.string(),
+    // Set on every occurrence of a recurring booking, sharing one value per
+    // series — null for a one-off.
+    recurrenceId: z.string().nullable().optional(),
     // Only populated by GET /bookings, where an admin can see every user's
     // bookings — lets the UI show whose booking is whose.
     user: z.object({ id: z.string(), name: z.string() }).optional(),
@@ -21,6 +24,13 @@ export const createBookingBodySchema = z
     roomId: z.string().min(1).openapi({ example: "clx0000000000000000000000" }),
     startTime: z.iso.datetime().openapi({ example: "2030-01-01T10:00:00.000Z" }),
     endTime: z.iso.datetime().openapi({ example: "2030-01-01T11:00:00.000Z" }),
+    // When set, books the same weekly time slot for this many occurrences
+    // (including the first) instead of a single booking.
+    recurrence: z
+      .object({
+        occurrences: z.number().int().min(2).max(12).openapi({ example: 4 }),
+      })
+      .optional(),
   })
   .openapi("CreateBookingRequest");
 
@@ -43,6 +53,10 @@ export const listBookingsQuerySchema = z.object({
 
 export const bookingIdParamsSchema = z.object({
   id: z.string().min(1),
+});
+
+export const recurrenceIdParamsSchema = z.object({
+  recurrenceId: z.string().min(1),
 });
 
 export type CreateBookingBody = z.infer<typeof createBookingBodySchema>;

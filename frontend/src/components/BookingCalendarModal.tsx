@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { createBooking, listBookings, rangesOverlap } from '../services/bookings';
+import { createBooking, createRecurringBooking, listBookings, rangesOverlap } from '../services/bookings';
 import { useAuthStore } from '../store/auth';
 import type { Booking, Room } from '../types';
 
@@ -29,6 +29,8 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
   const queryClient = useQueryClient();
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [occurrences, setOccurrences] = useState('4');
   const [conflictError, setConflictError] = useState<string | null>(null);
 
   const bookingsQuery = useQuery({
@@ -36,15 +38,24 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
     queryFn: () => listBookings(token, { roomId: room.id }),
   });
 
+  function handleBookingSaved() {
+    queryClient.invalidateQueries({ queryKey: ['bookings', room.id] });
+    queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+    setStart('');
+    setEnd('');
+    setConflictError(null);
+  }
+
   const createMutation = useMutation({
     mutationFn: (data: { roomId: string; startTime: string; endTime: string }) => createBooking(token, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings', room.id] });
-      queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
-      setStart('');
-      setEnd('');
-      setConflictError(null);
-    },
+    onSuccess: handleBookingSaved,
+    onError: (err: Error) => setConflictError(err.message),
+  });
+
+  const createRecurringMutation = useMutation({
+    mutationFn: (data: { roomId: string; startTime: string; endTime: string; occurrences: number }) =>
+      createRecurringBooking(token, data),
+    onSuccess: handleBookingSaved,
     onError: (err: Error) => setConflictError(err.message),
   });
 
@@ -73,6 +84,26 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
     }
     if (range.end <= range.start) {
       setConflictError('End time must be after the start time.');
+      return;
+    }
+
+    if (repeatWeekly) {
+      const count = Number(occurrences);
+      if (!Number.isInteger(count) || count < 2 || count > 12) {
+        setConflictError('Repeat for between 2 and 12 weeks.');
+        return;
+      }
+
+      // Only the first occurrence is checked against what's already loaded
+      // here — the rest of the series is validated server-side, which
+      // rejects the whole series (creating none of it) on any conflict.
+      setConflictError(null);
+      createRecurringMutation.mutate({
+        roomId: room.id,
+        startTime: range.start.toISOString(),
+        endTime: range.end.toISOString(),
+        occurrences: count,
+      });
       return;
     }
 
@@ -143,14 +174,36 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
             />
           </label>
 
+          <label className="booking-repeat">
+            <input type="checkbox" checked={repeatWeekly} onChange={(e) => setRepeatWeekly(e.target.checked)} />
+            Repeat weekly
+          </label>
+
+          {repeatWeekly && (
+            <label>
+              For how many weeks
+              <input
+                type="number"
+                min={2}
+                max={12}
+                value={occurrences}
+                onChange={(e) => setOccurrences(e.target.value)}
+              />
+            </label>
+          )}
+
           {conflictError && <p className="auth-error">{conflictError}</p>}
 
           <div className="modal-actions">
             <button type="button" className="link-button" onClick={onClose}>
               Close
             </button>
-            <button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Booking…' : 'Book room'}
+            <button type="submit" disabled={createMutation.isPending || createRecurringMutation.isPending}>
+              {createMutation.isPending || createRecurringMutation.isPending
+                ? 'Booking…'
+                : repeatWeekly
+                  ? 'Book series'
+                  : 'Book room'}
             </button>
           </div>
         </form>

@@ -5,10 +5,12 @@ import type { Booking, Room } from '../../types';
 
 const listBookings = vi.fn();
 const cancelBooking = vi.fn();
+const cancelBookingSeries = vi.fn();
 
 vi.mock('../../services/bookings', () => ({
   listBookings: (...args: unknown[]) => listBookings(...args),
   cancelBooking: (...args: unknown[]) => cancelBooking(...args),
+  cancelBookingSeries: (...args: unknown[]) => cancelBookingSeries(...args),
 }));
 
 const { authState } = vi.hoisted(() => ({
@@ -49,6 +51,7 @@ describe('MyBookingsModal', () => {
   beforeEach(() => {
     listBookings.mockReset();
     cancelBooking.mockReset();
+    cancelBookingSeries.mockReset();
     authState.user = { id: 'viewer-1', name: 'Viewer', role: 'USER' };
   });
 
@@ -69,7 +72,20 @@ describe('MyBookingsModal', () => {
     await waitFor(() => expect(screen.getByText('The Fridge')).toBeInTheDocument());
     expect(screen.getByRole('heading', { name: 'My bookings' })).toBeInTheDocument();
     expect(screen.queryByText(/booked by/i)).not.toBeInTheDocument();
-    expect(listBookings).toHaveBeenCalledWith('test-token');
+    // Excludes bookings that have already ended, so it must pass a `from`.
+    expect(listBookings).toHaveBeenCalledWith('test-token', { from: expect.any(String) });
+  });
+
+  it('asks the backend to exclude bookings that have already ended', async () => {
+    listBookings.mockResolvedValue([]);
+
+    renderWithClient();
+
+    await waitFor(() => expect(listBookings).toHaveBeenCalled());
+    const [, filters] = listBookings.mock.calls[0] as [string, { from: string }];
+    // A generous window rather than an exact match, so the assertion
+    // doesn't flake on how long rendering/awaiting actually took.
+    expect(Math.abs(new Date(filters.from).getTime() - Date.now())).toBeLessThan(5000);
   });
 
   it("labels each booking with its owner's name when viewed as admin, except the admin's own", async () => {
@@ -132,5 +148,44 @@ describe('MyBookingsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
     await waitFor(() => expect(cancelBooking).toHaveBeenCalledWith('test-token', 'b1'));
+  });
+
+  it('shows a "Weekly series" badge and a series cancel button for a recurring booking', async () => {
+    const booking: Booking = {
+      id: 'b1',
+      roomId: 'room-1',
+      userId: 'viewer-1',
+      startTime: '2030-01-05T10:00:00.000Z',
+      endTime: '2030-01-05T11:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      recurrenceId: 'series-1',
+    };
+    listBookings.mockResolvedValue([booking]);
+    cancelBookingSeries.mockResolvedValue(undefined);
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByText('Weekly series')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /cancel series/i }));
+
+    await waitFor(() => expect(cancelBookingSeries).toHaveBeenCalledWith('test-token', 'series-1'));
+  });
+
+  it('does not show the series badge or cancel-series button for a one-off booking', async () => {
+    const booking: Booking = {
+      id: 'b1',
+      roomId: 'room-1',
+      userId: 'viewer-1',
+      startTime: '2030-01-05T10:00:00.000Z',
+      endTime: '2030-01-05T11:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    listBookings.mockResolvedValue([booking]);
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByText('The Fridge')).toBeInTheDocument());
+    expect(screen.queryByText('Weekly series')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cancel series/i })).not.toBeInTheDocument();
   });
 });

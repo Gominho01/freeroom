@@ -1,4 +1,5 @@
 import type { Role } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { prisma } from "../config/prisma.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../lib/errors.js";
 
@@ -61,6 +62,68 @@ export async function createBooking(params: CreateBookingParams) {
   });
 }
 
+/**
+ * Pure, unit-testable: the same time-of-day/duration, one occurrence a week
+ * apart, `count` times (including the first).
+ */
+export function weeklyOccurrences(start: Date, end: Date, count: number): TimeRange[] {
+  const durationMs = end.getTime() - start.getTime();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+
+  return Array.from({ length: count }, (_, i) => ({
+    startTime: new Date(start.getTime() + i * weekMs),
+    endTime: new Date(start.getTime() + i * weekMs + durationMs),
+  }));
+}
+
+export interface CreateRecurringBookingParams extends CreateBookingParams {
+  occurrences: number;
+}
+
+/**
+ * Books the same weekly slot `occurrences` times as one series, or rejects
+ * the whole series if any single occurrence would conflict — never creates
+ * a partial series.
+ */
+export async function createRecurringBooking(params: CreateRecurringBookingParams) {
+  const room = await prisma.room.findUnique({ where: { id: params.roomId } });
+  if (!room) {
+    throw new NotFoundError("Room not found");
+  }
+
+  const candidates = weeklyOccurrences(params.startTime, params.endTime, params.occurrences);
+
+  const roomBookings = await prisma.booking.findMany({
+    where: { roomId: params.roomId },
+    select: { id: true, startTime: true, endTime: true },
+  });
+
+  for (const candidate of candidates) {
+    const conflict = findConflict(candidate, roomBookings);
+    if (conflict) {
+      throw new ConflictError("Room is already booked for one or more occurrences in this series", {
+        conflictingBookingId: conflict.id,
+        conflictingStartTime: candidate.startTime.toISOString(),
+      });
+    }
+  }
+
+  const recurrenceId = randomUUID();
+  return prisma.$transaction(
+    candidates.map((candidate) =>
+      prisma.booking.create({
+        data: {
+          roomId: params.roomId,
+          userId: params.userId,
+          startTime: candidate.startTime,
+          endTime: candidate.endTime,
+          recurrenceId,
+        },
+      }),
+    ),
+  );
+}
+
 export interface ListBookingsFilters {
   roomId?: string;
   userId?: string;
@@ -94,4 +157,18 @@ export async function cancelBooking(id: string, requester: { id: string; role: R
   }
 
   await prisma.booking.delete({ where: { id } });
+}
+
+export async function cancelBookingSeries(recurrenceId: string, requester: { id: string; role: Role }): Promise<void> {
+  const bookings = await prisma.booking.findMany({ where: { recurrenceId } });
+  if (bookings.length === 0) {
+    throw new NotFoundError("Booking series not found");
+  }
+
+  const isOwner = bookings.every((booking) => booking.userId === requester.id);
+  if (!isOwner && requester.role !== "ADMIN") {
+    throw new ForbiddenError("You can only cancel your own bookings");
+  }
+
+  await prisma.booking.deleteMany({ where: { recurrenceId } });
 }
