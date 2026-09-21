@@ -14,6 +14,18 @@ export async function create(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
   const body = req.body as CreateBookingBody;
 
+  if (body.recurrence) {
+    const bookings = await bookingService.createRecurringBooking({
+      roomId: body.roomId,
+      userId: user.id,
+      startTime: new Date(body.startTime),
+      endTime: new Date(body.endTime),
+      occurrences: body.recurrence.occurrences,
+    });
+    res.status(201).json(bookings);
+    return;
+  }
+
   const booking = await bookingService.createBooking({
     roomId: body.roomId,
     userId: user.id,
@@ -45,5 +57,11 @@ export async function list(req: Request, res: Response): Promise<void> {
 export async function remove(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
   await bookingService.cancelBooking(req.params.id as string, user);
+  res.status(204).send();
+}
+
+export async function removeSeries(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  await bookingService.cancelBookingSeries(req.params.recurrenceId as string, user);
   res.status(204).send();
 }
