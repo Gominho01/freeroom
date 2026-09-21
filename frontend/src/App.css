@@ -542,6 +542,16 @@ label.trait-checkbox {
   padding: 2px;
 }
 
+label.booking-repeat {
+  align-items: center;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.booking-repeat input {
+  margin: 0;
+}
+
 /* My bookings */
 
 .my-bookings-list {
@@ -579,6 +589,22 @@ label.trait-checkbox {
   color: var(--accent);
   font-size: 12px;
   margin: 2px 0 0;
+}
+
+.my-bookings-recurring {
+  background: var(--accent-bg);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 11px;
+  margin-left: 8px;
+  padding: 2px 8px;
+}
+
+.my-bookings-actions {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Leaderboard */

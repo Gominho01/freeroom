@@ -27,8 +27,25 @@ export function createBooking(
   });
 }
 
+/** Books the same weekly slot `occurrences` times as one series; the whole
+ * series is rejected if any single occurrence would conflict. */
+export function createRecurringBooking(
+  token: string,
+  data: { roomId: string; startTime: string; endTime: string; occurrences: number },
+): Promise<Booking[]> {
+  const { occurrences, ...rest } = data;
+  return request<Booking[]>('/bookings', token, {
+    method: 'POST',
+    body: JSON.stringify({ ...rest, recurrence: { occurrences } }),
+  });
+}
+
 export function cancelBooking(token: string, id: string): Promise<void> {
   return request<void>(`/bookings/${id}`, token, { method: 'DELETE' });
+}
+
+export function cancelBookingSeries(token: string, recurrenceId: string): Promise<void> {
+  return request<void>(`/bookings/series/${recurrenceId}`, token, { method: 'DELETE' });
 }
 
 export interface TimeRange {
