@@ -1,6 +1,6 @@
 # SalaLivre — Meeting Room Booking System
 
-**Status:** ✅ Phase 3 implemented — everything from Phase 2, plus a walkable, Gather-style world map (multiplayer avatars, a receptionist NPC) as an alternate way to get around. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
+**Status:** ✅ Phase 4 implemented — everything from Phase 3, plus weekly recurring bookings. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
 
 ## Overview
 
@@ -30,12 +30,17 @@ Beyond the standard CRUD-plus-calendar booking app, each room has a "profile" �
 
 - **World map** — an alternate, opt-in view of the whole floor: every room as a walkable "building" (arrow keys/WASD), a receptionist NPC in the middle who can point you to free rooms, and everyone else currently on the map shown as a live avatar (Socket.io, in-memory only — no position is ever persisted). Walking up to a door or the receptionist and pressing E opens the same booking calendar / my-bookings / room-list UI the card view already has — the map is a different way to get there, not a different booking flow. ✅ done
 
+### Phase 4
+
+- **Recurring bookings** — "repeat weekly" for 2–12 occurrences when booking a room; every occurrence shares one series id, and the whole series is rejected (nothing created) if any single occurrence would conflict. "My bookings" shows a "Weekly series" badge with a "Cancel series" option alongside the usual per-occurrence cancel. ✅ done
+- **Fixed a bug found while building this**: "My bookings" was listing every booking a user had ever made, forever — including ones long since over, still showing a "Cancel" button that did nothing useful. It now only lists bookings that haven't ended yet. ✅ done
+
 ### Roadmap / stretch goals
 
 - **In-map dialogue UI** — right now "press E" just opens the existing modals (calendar, my bookings, room list); a proper dialogue box / RPG-style menu for the receptionist and room doors would be more immersive, but is a lot more design and code than reusing what's already there.
 - **Map-only navigation** — dropping the card list entirely and making the world map the only way to browse/book rooms, once it's proven out as more than a novelty.
 - **Email notifications** — booking confirmation and reminders via Nodemailer, matching the app's tone of voice.
-- **Recurring bookings** — e.g. "every Monday at 10am for 4 weeks," reusing the same conflict-detection logic per occurrence.
+- **Waitlist** — for a slot that's already booked, so someone can be notified if it opens back up.
 - **Rate limiting** — per-user/IP limits on booking-creation routes.
 
 ## Design Direction
@@ -96,11 +101,14 @@ The socket layer here only pushes state that's already fully determined by the s
 4. **Phase 3 — world map**
    - Walkable Gather-style map: every room as a building, a receptionist NPC pointing to free rooms, real-time avatars for everyone else on the map (Socket.io, in-memory presence only). ✅ done
    - Reuses the existing booking calendar / my-bookings / room-list modals when you interact with a door or the receptionist, rather than a separate booking UI. ✅ done
-5. **Phase 4 — notifications & recurrence**
+5. **Phase 4 — recurring bookings**
+   - "Repeat weekly" for 2–12 occurrences, sharing one series id; the whole series is rejected if any occurrence would conflict. ✅ done
+   - "Cancel series" alongside the per-occurrence cancel in My Bookings. ✅ done
+   - Fixed My Bookings listing bookings that had already ended. ✅ done
+6. **Phase 5 — notifications & waitlist**
    - Email/in-app booking confirmation and reminders.
-   - Recurring bookings ("every Monday at 10am for 4 weeks").
    - Waitlist for slots that are already booked.
-6. **Phase 5 — polish & deploy**
+7. **Phase 6 — polish & deploy**
    - Export a booking to a personal calendar (.ics).
    - Room photo gallery.
    - Rate limiting on booking-creation routes.
