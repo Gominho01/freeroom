@@ -233,6 +233,42 @@ describe("Bookings", () => {
     expect(response.body[0].roomId).toBe(roomOne.id);
   });
 
+  it("excludes already-ended bookings when filtered with `from`, so My Bookings stops listing the past", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    // The API itself refuses to create a booking in the past, but a
+    // real one still ends up there once its own end time elapses — insert
+    // directly to simulate that, the same way occupancy.service.test.ts does.
+    const past = await prisma.booking.create({
+      data: {
+        roomId: room.id,
+        userId: user.user.id,
+        startTime: new Date("2020-01-01T10:00:00.000Z"),
+        endTime: new Date("2020-01-01T11:00:00.000Z"),
+      },
+    });
+
+    const upcoming = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({ roomId: room.id, startTime: "2030-01-01T10:00:00.000Z", endTime: "2030-01-01T11:00:00.000Z" });
+
+    const unfiltered = await request(app).get("/bookings").set("Authorization", `Bearer ${user.token}`);
+    expect(unfiltered.body.map((b: { id: string }) => b.id).sort()).toEqual(
+      [past.id, upcoming.body.id].sort(),
+    );
+
+    const response = await request(app)
+      .get(`/bookings?from=${new Date().toISOString()}`)
+      .set("Authorization", `Bearer ${user.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0].id).toBe(upcoming.body.id);
+  });
+
   it("lets the owner cancel their booking, forbids a stranger, allows an admin", async () => {
     const admin = await createUser("ADMIN");
     const owner = await createUser("USER");
