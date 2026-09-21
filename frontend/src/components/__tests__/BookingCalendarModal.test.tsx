@@ -5,6 +5,7 @@ import type { Booking, Room } from '../../types';
 
 const listBookings = vi.fn();
 const createBooking = vi.fn();
+const createRecurringBooking = vi.fn();
 
 vi.mock('../../services/bookings', async () => {
   const actual = await vi.importActual<typeof import('../../services/bookings')>('../../services/bookings');
@@ -12,6 +13,7 @@ vi.mock('../../services/bookings', async () => {
     ...actual,
     listBookings: (...args: unknown[]) => listBookings(...args),
     createBooking: (...args: unknown[]) => createBooking(...args),
+    createRecurringBooking: (...args: unknown[]) => createRecurringBooking(...args),
   };
 });
 
@@ -40,6 +42,7 @@ describe('BookingCalendarModal', () => {
   beforeEach(() => {
     listBookings.mockReset();
     createBooking.mockReset();
+    createRecurringBooking.mockReset();
   });
 
   it('lists today as free and shows a booked slot for today', async () => {
@@ -138,5 +141,47 @@ describe('BookingCalendarModal', () => {
 
     expect(screen.getByText(/overlaps an existing booking/i)).toBeInTheDocument();
     expect(createBooking).not.toHaveBeenCalled();
+  });
+
+  it('books a weekly series when "Repeat weekly" is checked', async () => {
+    listBookings.mockResolvedValue([]);
+    createRecurringBooking.mockResolvedValue([{}, {}, {}]);
+
+    renderWithClient(<BookingCalendarModal room={room} onClose={vi.fn()} />);
+    await waitFor(() => expect(listBookings).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2030-01-07T10:00' } });
+    fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2030-01-07T11:00' } });
+    fireEvent.click(screen.getByLabelText(/repeat weekly/i));
+    fireEvent.change(screen.getByLabelText(/for how many weeks/i), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: /book series/i }));
+
+    await waitFor(() =>
+      expect(createRecurringBooking).toHaveBeenCalledWith('test-token', {
+        roomId: room.id,
+        startTime: new Date('2030-01-07T10:00').toISOString(),
+        endTime: new Date('2030-01-07T11:00').toISOString(),
+        occurrences: 3,
+      }),
+    );
+    expect(createBooking).not.toHaveBeenCalled();
+  });
+
+  it('rejects an out-of-range occurrence count without calling the API', async () => {
+    listBookings.mockResolvedValue([]);
+
+    const { container } = renderWithClient(<BookingCalendarModal room={room} onClose={vi.fn()} />);
+    await waitFor(() => expect(listBookings).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2030-01-07T10:00' } });
+    fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2030-01-07T11:00' } });
+    fireEvent.click(screen.getByLabelText(/repeat weekly/i));
+    fireEvent.change(screen.getByLabelText(/for how many weeks/i), { target: { value: '1' } });
+    // Submitting the form directly skips the browser's own `min`-based
+    // constraint validation, same as the past-date test above.
+    fireEvent.submit(container.querySelector('.booking-form')!);
+
+    expect(screen.getByText(/repeat for between 2 and 12 weeks/i)).toBeInTheDocument();
+    expect(createRecurringBooking).not.toHaveBeenCalled();
   });
 });

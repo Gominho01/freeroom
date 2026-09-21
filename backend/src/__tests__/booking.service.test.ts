@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findConflict, rangesOverlap } from "../services/booking.service.js";
+import { findConflict, rangesOverlap, weeklyOccurrences } from "../services/booking.service.js";
 
 // Pure functions — no database required, these run and pass without a live
 // Postgres instance.
@@ -65,5 +65,38 @@ describe("findConflict", () => {
     const candidate = { startTime: new Date("2026-01-01T12:00:00Z"), endTime: new Date("2026-01-01T13:00:00Z") };
 
     expect(findConflict(candidate, [])).toBeUndefined();
+  });
+});
+
+describe("weeklyOccurrences", () => {
+  it("generates the requested number of occurrences, one week apart", () => {
+    const start = new Date("2026-01-05T10:00:00Z"); // a Monday
+    const end = new Date("2026-01-05T11:00:00Z");
+
+    const occurrences = weeklyOccurrences(start, end, 3);
+
+    expect(occurrences).toEqual([
+      { startTime: new Date("2026-01-05T10:00:00Z"), endTime: new Date("2026-01-05T11:00:00Z") },
+      { startTime: new Date("2026-01-12T10:00:00Z"), endTime: new Date("2026-01-12T11:00:00Z") },
+      { startTime: new Date("2026-01-19T10:00:00Z"), endTime: new Date("2026-01-19T11:00:00Z") },
+    ]);
+  });
+
+  it("preserves the original duration on every occurrence", () => {
+    const start = new Date("2026-01-05T10:00:00Z");
+    const end = new Date("2026-01-05T11:30:00Z");
+
+    const occurrences = weeklyOccurrences(start, end, 4);
+
+    for (const occurrence of occurrences) {
+      expect(occurrence.endTime.getTime() - occurrence.startTime.getTime()).toBe(90 * 60 * 1000);
+    }
+  });
+
+  it("returns a single occurrence when count is 1", () => {
+    const start = new Date("2026-01-05T10:00:00Z");
+    const end = new Date("2026-01-05T11:00:00Z");
+
+    expect(weeklyOccurrences(start, end, 1)).toEqual([{ startTime: start, endTime: end }]);
   });
 });

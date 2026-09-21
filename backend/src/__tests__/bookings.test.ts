@@ -282,4 +282,106 @@ describe("Bookings", () => {
 
     expect(response.status).toBe(404);
   });
+
+  describe("recurring bookings", () => {
+    it("creates one booking per occurrence, all sharing a recurrenceId", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const response = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          roomId: room.id,
+          startTime: "2030-01-07T10:00:00.000Z", // a Monday
+          endTime: "2030-01-07T11:00:00.000Z",
+          recurrence: { occurrences: 3 },
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveLength(3);
+      const recurrenceId = response.body[0].recurrenceId;
+      expect(recurrenceId).toBeTruthy();
+      expect(response.body.every((b: { recurrenceId: string }) => b.recurrenceId === recurrenceId)).toBe(true);
+      expect(response.body.map((b: { startTime: string }) => b.startTime)).toEqual([
+        "2030-01-07T10:00:00.000Z",
+        "2030-01-14T10:00:00.000Z",
+        "2030-01-21T10:00:00.000Z",
+      ]);
+    });
+
+    it("rejects the whole series with 409 when any single occurrence conflicts, creating none of it", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      // Occupies the room on the third occurrence's date only.
+      await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-21T10:30:00.000Z", endTime: "2030-01-21T11:30:00.000Z" });
+
+      const response = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          roomId: room.id,
+          startTime: "2030-01-07T10:00:00.000Z",
+          endTime: "2030-01-07T11:00:00.000Z",
+          recurrence: { occurrences: 3 },
+        });
+
+      expect(response.status).toBe(409);
+
+      const remaining = await request(app)
+        .get(`/bookings?roomId=${room.id}`)
+        .set("Authorization", `Bearer ${user.token}`);
+      // Only the single pre-existing booking — none of the series was created.
+      expect(remaining.body).toHaveLength(1);
+    });
+
+    it("lets the series owner cancel every occurrence at once, forbids a stranger", async () => {
+      const admin = await createUser("ADMIN");
+      const owner = await createUser("USER");
+      const stranger = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${owner.token}`)
+        .send({
+          roomId: room.id,
+          startTime: "2030-01-07T10:00:00.000Z",
+          endTime: "2030-01-07T11:00:00.000Z",
+          recurrence: { occurrences: 3 },
+        });
+      const recurrenceId = created.body[0].recurrenceId;
+
+      const forbidden = await request(app)
+        .delete(`/bookings/series/${recurrenceId}`)
+        .set("Authorization", `Bearer ${stranger.token}`);
+      expect(forbidden.status).toBe(403);
+
+      const cancelled = await request(app)
+        .delete(`/bookings/series/${recurrenceId}`)
+        .set("Authorization", `Bearer ${owner.token}`);
+      expect(cancelled.status).toBe(204);
+
+      const remaining = await request(app)
+        .get(`/bookings?roomId=${room.id}`)
+        .set("Authorization", `Bearer ${owner.token}`);
+      expect(remaining.body).toHaveLength(0);
+    });
+
+    it("returns 404 when cancelling a series that does not exist", async () => {
+      const user = await createUser("USER");
+
+      const response = await request(app)
+        .delete("/bookings/series/does-not-exist")
+        .set("Authorization", `Bearer ${user.token}`);
+
+      expect(response.status).toBe(404);
+    });
+  });
 });
