@@ -17,9 +17,11 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
 
   // The backend ignores any userId filter for non-admins and always scopes
   // the result to the requester, so an unfiltered call is already "mine".
+  // `from` excludes bookings that have already ended — nothing left to
+  // cancel there, and without it the list only grows forever.
   const bookingsQuery = useQuery({
     queryKey: ['my-bookings'],
-    queryFn: () => listBookings(token),
+    queryFn: () => listBookings(token, { from: new Date().toISOString() }),
   });
 
   const cancelMutation = useMutation({
