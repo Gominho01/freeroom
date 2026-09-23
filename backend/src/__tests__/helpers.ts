@@ -32,6 +32,8 @@ export async function createUser(role: Role = "USER") {
 }
 
 export async function resetDatabase(): Promise<void> {
+  await prisma.notification.deleteMany();
+  await prisma.waitlistEntry.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.room.deleteMany();
   await prisma.user.deleteMany();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findConflict, rangesOverlap, weeklyOccurrences } from "../services/booking.service.js";
+import { findConflict, formatRange, rangesOverlap, weeklyOccurrences } from "../services/booking.service.js";
 
 // Pure functions — no database required, these run and pass without a live
 // Postgres instance.
@@ -98,5 +98,14 @@ describe("weeklyOccurrences", () => {
     const end = new Date("2026-01-05T11:00:00Z");
 
     expect(weeklyOccurrences(start, end, 1)).toEqual([{ startTime: start, endTime: end }]);
+  });
+});
+
+describe("formatRange", () => {
+  it("formats a date and time range in UTC, independent of the local timezone", () => {
+    const start = new Date("2030-01-07T10:00:00.000Z");
+    const end = new Date("2030-01-07T11:30:00.000Z");
+
+    expect(formatRange(start, end)).toBe("2030-01-07, 10:00–11:30");
   });
 });
