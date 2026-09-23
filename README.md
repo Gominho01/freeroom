@@ -1,6 +1,6 @@
 # SalaLivre — Meeting Room Booking System
 
-**Status:** ✅ Phase 4 implemented — everything from Phase 3, plus weekly recurring bookings. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
+**Status:** ✅ Phase 5 implemented — everything from Phase 4, plus booking notifications, reminders, and a waitlist. Run `docker compose up -d`, then `backend && npm run dev` / `frontend && npm run dev` to try it.
 
 ## Overview
 
@@ -35,12 +35,15 @@ Beyond the standard CRUD-plus-calendar booking app, each room has a "profile" �
 - **Recurring bookings** — "repeat weekly" for 2–12 occurrences when booking a room; every occurrence shares one series id, and the whole series is rejected (nothing created) if any single occurrence would conflict. "My bookings" shows a "Weekly series" badge with a "Cancel series" option alongside the usual per-occurrence cancel. ✅ done
 - **Fixed a bug found while building this**: "My bookings" was listing every booking a user had ever made, forever — including ones long since over, still showing a "Cancel" button that did nothing useful. It now only lists bookings that haven't ended yet. ✅ done
 
+### Phase 5
+
+- **Notifications** — booking confirmation and a reminder 15 minutes before start, both as an in-app notification and a dev-mode "email" (Nodemailer, logged to console instead of sent — no SMTP credentials needed). A recurring series sends one confirmation for the whole series, not one per occurrence. ✅ done
+- **Waitlist** — booking a slot that's already taken offers joining its waitlist instead. Cancelling that slot (or the whole series) automatically books it for whoever's been waiting longest among the overlapping entries whose exact range is now free, and notifies them — first come, first served, no manual "grab it before someone else does." ✅ done
+
 ### Roadmap / stretch goals
 
 - **In-map dialogue UI** — right now "press E" just opens the existing modals (calendar, my bookings, room list); a proper dialogue box / RPG-style menu for the receptionist and room doors would be more immersive, but is a lot more design and code than reusing what's already there.
 - **Map-only navigation** — dropping the card list entirely and making the world map the only way to browse/book rooms, once it's proven out as more than a novelty.
-- **Email notifications** — booking confirmation and reminders via Nodemailer, matching the app's tone of voice.
-- **Waitlist** — for a slot that's already booked, so someone can be notified if it opens back up.
 - **Rate limiting** — per-user/IP limits on booking-creation routes.
 
 ## Design Direction
@@ -106,8 +109,8 @@ The socket layer here only pushes state that's already fully determined by the s
    - "Cancel series" alongside the per-occurrence cancel in My Bookings. ✅ done
    - Fixed My Bookings listing bookings that had already ended. ✅ done
 6. **Phase 5 — notifications & waitlist**
-   - Email/in-app booking confirmation and reminders.
-   - Waitlist for slots that are already booked.
+   - Email/in-app booking confirmation and a 15-minute-before reminder. ✅ done
+   - Waitlist for slots that are already booked, auto-booked (first come, first served) and notified when they free up. ✅ done
 7. **Phase 6 — polish & deploy**
    - Export a booking to a personal calendar (.ics).
    - Room photo gallery.
