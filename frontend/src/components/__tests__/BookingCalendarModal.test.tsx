@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiRequestError } from '../../services/http';
 import type { Booking, Room } from '../../types';
 
 const listBookings = vi.fn();
 const createBooking = vi.fn();
 const createRecurringBooking = vi.fn();
+const joinWaitlist = vi.fn();
 
 vi.mock('../../services/bookings', async () => {
   const actual = await vi.importActual<typeof import('../../services/bookings')>('../../services/bookings');
@@ -14,6 +16,7 @@ vi.mock('../../services/bookings', async () => {
     listBookings: (...args: unknown[]) => listBookings(...args),
     createBooking: (...args: unknown[]) => createBooking(...args),
     createRecurringBooking: (...args: unknown[]) => createRecurringBooking(...args),
+    joinWaitlist: (...args: unknown[]) => joinWaitlist(...args),
   };
 });
 
@@ -43,6 +46,7 @@ describe('BookingCalendarModal', () => {
     listBookings.mockReset();
     createBooking.mockReset();
     createRecurringBooking.mockReset();
+    joinWaitlist.mockReset();
   });
 
   it('lists today as free and shows a booked slot for today', async () => {
@@ -183,5 +187,64 @@ describe('BookingCalendarModal', () => {
 
     expect(screen.getByText(/repeat for between 2 and 12 weeks/i)).toBeInTheDocument();
     expect(createRecurringBooking).not.toHaveBeenCalled();
+  });
+
+  it('offers to join the waitlist when the server rejects with a 409 conflict', async () => {
+    listBookings.mockResolvedValue([]);
+    createBooking.mockRejectedValue(new ApiRequestError('This time overlaps an existing booking.', 409));
+
+    renderWithClient(<BookingCalendarModal room={room} onClose={vi.fn()} />);
+    await waitFor(() => expect(listBookings).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2030-01-01T10:00' } });
+    fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2030-01-01T11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /book room/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /join waitlist for this time/i })).toBeInTheDocument(),
+    );
+  });
+
+  it('does not offer the waitlist for a non-conflict error', async () => {
+    listBookings.mockResolvedValue([]);
+    createBooking.mockRejectedValue(new ApiRequestError('Something went wrong.', 500));
+
+    renderWithClient(<BookingCalendarModal room={room} onClose={vi.fn()} />);
+    await waitFor(() => expect(listBookings).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2030-01-01T10:00' } });
+    fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2030-01-01T11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /book room/i }));
+
+    await waitFor(() => expect(screen.getByText(/something went wrong/i)).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /join waitlist for this time/i })).not.toBeInTheDocument();
+  });
+
+  it('joins the waitlist and shows a confirmation', async () => {
+    listBookings.mockResolvedValue([]);
+    createBooking.mockRejectedValue(new ApiRequestError('This time overlaps an existing booking.', 409));
+    joinWaitlist.mockResolvedValue({});
+
+    renderWithClient(<BookingCalendarModal room={room} onClose={vi.fn()} />);
+    await waitFor(() => expect(listBookings).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2030-01-01T10:00' } });
+    fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2030-01-01T11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /book room/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /join waitlist for this time/i })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /join waitlist for this time/i }));
+
+    await waitFor(() =>
+      expect(joinWaitlist).toHaveBeenCalledWith('test-token', {
+        roomId: room.id,
+        startTime: new Date('2030-01-01T10:00').toISOString(),
+        endTime: new Date('2030-01-01T11:00').toISOString(),
+      }),
+    );
+    expect(screen.getByText(/added to your waitlist/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /join waitlist for this time/i })).not.toBeInTheDocument();
   });
 });
