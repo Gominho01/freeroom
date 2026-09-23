@@ -607,6 +607,15 @@ label.booking-repeat {
   gap: 4px;
 }
 
+.my-bookings-section-title {
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  text-transform: uppercase;
+}
+
 /* Leaderboard */
 
 .leaderboard-list {

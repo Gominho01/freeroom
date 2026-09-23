@@ -89,3 +89,13 @@ export interface Notification {
   read: boolean;
   createdAt: string;
 }
+
+export interface WaitlistEntry {
+  id: string;
+  roomId: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  room?: { id: string; nickname: string };
+}

@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { createBooking, createRecurringBooking, listBookings, rangesOverlap } from '../services/bookings';
+import { ApiRequestError } from '../services/http';
+import { createBooking, createRecurringBooking, joinWaitlist, listBookings, rangesOverlap } from '../services/bookings';
 import { useAuthStore } from '../store/auth';
 import type { Booking, Room } from '../types';
 
@@ -32,6 +33,8 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
   const [repeatWeekly, setRepeatWeekly] = useState(false);
   const [occurrences, setOccurrences] = useState('4');
   const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictRange, setConflictRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
 
   const bookingsQuery = useQuery({
     queryKey: ['bookings', room.id],
@@ -41,22 +44,39 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
   function handleBookingSaved() {
     queryClient.invalidateQueries({ queryKey: ['bookings', room.id] });
     queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
     setStart('');
     setEnd('');
     setConflictError(null);
+    setConflictRange(null);
+  }
+
+  function handleConflict(err: Error, range: { start: Date; end: Date }) {
+    setConflictError(err.message);
+    setWaitlistJoined(false);
+    // Only a genuine time conflict (409) is worth offering a waitlist for —
+    // a validation error (400) or anything else isn't a "this room's busy"
+    // situation.
+    setConflictRange(err instanceof ApiRequestError && err.status === 409 ? range : null);
   }
 
   const createMutation = useMutation({
     mutationFn: (data: { roomId: string; startTime: string; endTime: string }) => createBooking(token, data),
     onSuccess: handleBookingSaved,
-    onError: (err: Error) => setConflictError(err.message),
   });
 
   const createRecurringMutation = useMutation({
     mutationFn: (data: { roomId: string; startTime: string; endTime: string; occurrences: number }) =>
       createRecurringBooking(token, data),
     onSuccess: handleBookingSaved,
-    onError: (err: Error) => setConflictError(err.message),
+  });
+
+  const joinWaitlistMutation = useMutation({
+    mutationFn: (data: { roomId: string; startTime: string; endTime: string }) => joinWaitlist(token, data),
+    onSuccess: () => {
+      setWaitlistJoined(true);
+      queryClient.invalidateQueries({ queryKey: ['waitlist'] });
+    },
   });
 
   const bookings = bookingsQuery.data ?? [];
@@ -78,6 +98,9 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
     if (!start || !end) return;
 
     const range = { start: new Date(start), end: new Date(end) };
+    setConflictRange(null);
+    setWaitlistJoined(false);
+
     if (range.start.getTime() <= Date.now()) {
       setConflictError('Start time must be in the future.');
       return;
@@ -98,28 +121,36 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
       // here — the rest of the series is validated server-side, which
       // rejects the whole series (creating none of it) on any conflict.
       setConflictError(null);
-      createRecurringMutation.mutate({
-        roomId: room.id,
-        startTime: range.start.toISOString(),
-        endTime: range.end.toISOString(),
-        occurrences: count,
-      });
+      createRecurringMutation.mutate(
+        {
+          roomId: room.id,
+          startTime: range.start.toISOString(),
+          endTime: range.end.toISOString(),
+          occurrences: count,
+        },
+        { onError: (err) => handleConflict(err, range) },
+      );
       return;
     }
 
     // Reflects the conflict immediately from what's already loaded, instead
-    // of waiting on the 409 the server would return for the same overlap.
+    // of waiting on the 409 the server would return for the same overlap —
+    // still offers the waitlist, since it's the same situation either way.
     if (overlapsExisting(range)) {
       setConflictError('This time overlaps an existing booking.');
+      setConflictRange(range);
       return;
     }
 
     setConflictError(null);
-    createMutation.mutate({
-      roomId: room.id,
-      startTime: range.start.toISOString(),
-      endTime: range.end.toISOString(),
-    });
+    createMutation.mutate(
+      {
+        roomId: room.id,
+        startTime: range.start.toISOString(),
+        endTime: range.end.toISOString(),
+      },
+      { onError: (err) => handleConflict(err, range) },
+    );
   }
 
   return (
@@ -193,6 +224,28 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
           )}
 
           {conflictError && <p className="auth-error">{conflictError}</p>}
+
+          {conflictRange && !waitlistJoined && (
+            <button
+              type="button"
+              className="link-button"
+              disabled={joinWaitlistMutation.isPending}
+              onClick={() =>
+                joinWaitlistMutation.mutate({
+                  roomId: room.id,
+                  startTime: conflictRange.start.toISOString(),
+                  endTime: conflictRange.end.toISOString(),
+                })
+              }
+            >
+              {joinWaitlistMutation.isPending ? 'Joining waitlist…' : 'Join waitlist for this time'}
+            </button>
+          )}
+          {waitlistJoined && (
+            <p className="calendar-hint">
+              Added to your waitlist — if it opens up, we'll book it for you automatically and let you know.
+            </p>
+          )}
 
           <div className="modal-actions">
             <button type="button" className="link-button" onClick={onClose}>
