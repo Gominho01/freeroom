@@ -79,3 +79,23 @@ export interface WorldPlayer {
   x: number;
   y: number;
 }
+
+export type NotificationType = 'BOOKING_CONFIRMED' | 'BOOKING_REMINDER' | 'WAITLIST_AVAILABLE';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  roomId: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  room?: { id: string; nickname: string };
+}

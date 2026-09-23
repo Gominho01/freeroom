@@ -1,5 +1,5 @@
 import { request } from './http';
-import type { Booking } from '../types';
+import type { Booking, WaitlistEntry } from '../types';
 
 export interface BookingFilters {
   roomId?: string;
@@ -46,6 +46,24 @@ export function cancelBooking(token: string, id: string): Promise<void> {
 
 export function cancelBookingSeries(token: string, recurrenceId: string): Promise<void> {
   return request<void>(`/bookings/series/${recurrenceId}`, token, { method: 'DELETE' });
+}
+
+export function joinWaitlist(
+  token: string,
+  data: { roomId: string; startTime: string; endTime: string },
+): Promise<WaitlistEntry> {
+  return request<WaitlistEntry>('/bookings/waitlist', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function listWaitlist(token: string): Promise<WaitlistEntry[]> {
+  return request<WaitlistEntry[]>('/bookings/waitlist', token);
+}
+
+export function leaveWaitlist(token: string, id: string): Promise<void> {
+  return request<void>(`/bookings/waitlist/${id}`, token, { method: 'DELETE' });
 }
 
 export interface TimeRange {

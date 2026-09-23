@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as bookingController from "../controllers/booking.controller.js";
+import * as waitlistController from "../controllers/waitlist.controller.js";
 import { authenticate } from "../middlewares/auth.js";
 import { validateBody, validateParams, validateQuery } from "../middlewares/validate.js";
 import {
@@ -8,6 +9,7 @@ import {
   listBookingsQuerySchema,
   recurrenceIdParamsSchema,
 } from "../schemas/booking.schema.js";
+import { joinWaitlistBodySchema, waitlistIdParamsSchema } from "../schemas/waitlist.schema.js";
 
 export const bookingRouter = Router();
 
@@ -20,4 +22,7 @@ bookingRouter.delete(
   validateParams(recurrenceIdParamsSchema),
   bookingController.removeSeries,
 );
+bookingRouter.post("/waitlist", validateBody(joinWaitlistBodySchema), waitlistController.join);
+bookingRouter.get("/waitlist", waitlistController.list);
+bookingRouter.delete("/waitlist/:id", validateParams(waitlistIdParamsSchema), waitlistController.leave);
 bookingRouter.delete("/:id", validateParams(bookingIdParamsSchema), bookingController.remove);

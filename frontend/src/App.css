@@ -607,6 +607,15 @@ label.booking-repeat {
   gap: 4px;
 }
 
+.my-bookings-section-title {
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  text-transform: uppercase;
+}
+
 /* Leaderboard */
 
 .leaderboard-list {
@@ -860,5 +869,76 @@ label.booking-repeat {
 .receptionist-status-busy {
   color: var(--accent);
   font-size: 13px;
+  margin: 2px 0 0;
+}
+
+/* Notifications */
+
+.notifications-bell {
+  position: relative;
+}
+
+.notifications-badge {
+  background: var(--accent);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  margin-left: 4px;
+  padding: 1px 6px;
+}
+
+.notifications-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 16px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 320px;
+  z-index: 10;
+}
+
+.notifications-panel-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.notifications-panel-header h3 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.notifications-list li {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.notifications-list li[data-read='false'] .notifications-message {
+  font-weight: 600;
+}
+
+.notifications-message {
+  font-size: 13px;
+  margin: 0;
+}
+
+.notifications-time {
+  color: var(--text);
+  font-size: 11px;
   margin: 2px 0 0;
 }

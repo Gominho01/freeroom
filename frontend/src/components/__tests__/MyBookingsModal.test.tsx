@@ -1,16 +1,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Booking, Room } from '../../types';
+import type { Booking, Room, WaitlistEntry } from '../../types';
 
 const listBookings = vi.fn();
 const cancelBooking = vi.fn();
 const cancelBookingSeries = vi.fn();
+const listWaitlist = vi.fn();
+const leaveWaitlist = vi.fn();
 
 vi.mock('../../services/bookings', () => ({
   listBookings: (...args: unknown[]) => listBookings(...args),
   cancelBooking: (...args: unknown[]) => cancelBooking(...args),
   cancelBookingSeries: (...args: unknown[]) => cancelBookingSeries(...args),
+  listWaitlist: (...args: unknown[]) => listWaitlist(...args),
+  leaveWaitlist: (...args: unknown[]) => leaveWaitlist(...args),
 }));
 
 const { authState } = vi.hoisted(() => ({
@@ -52,6 +56,9 @@ describe('MyBookingsModal', () => {
     listBookings.mockReset();
     cancelBooking.mockReset();
     cancelBookingSeries.mockReset();
+    listWaitlist.mockReset();
+    leaveWaitlist.mockReset();
+    listWaitlist.mockResolvedValue([]);
     authState.user = { id: 'viewer-1', name: 'Viewer', role: 'USER' };
   });
 
@@ -187,5 +194,38 @@ describe('MyBookingsModal', () => {
     await waitFor(() => expect(screen.getByText('The Fridge')).toBeInTheDocument());
     expect(screen.queryByText('Weekly series')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /cancel series/i })).not.toBeInTheDocument();
+  });
+
+  it('hides the "My waitlist" section when there are no waitlist entries', async () => {
+    listBookings.mockResolvedValue([]);
+    listWaitlist.mockResolvedValue([]);
+
+    renderWithClient();
+
+    await waitFor(() => expect(listWaitlist).toHaveBeenCalled());
+    expect(screen.queryByText('My waitlist')).not.toBeInTheDocument();
+  });
+
+  it('lists waitlist entries and leaves one', async () => {
+    listBookings.mockResolvedValue([]);
+    const entry: WaitlistEntry = {
+      id: 'w1',
+      roomId: 'room-1',
+      userId: 'viewer-1',
+      startTime: '2030-01-05T10:00:00.000Z',
+      endTime: '2030-01-05T11:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      room: { id: 'room-1', nickname: 'The Fridge' },
+    };
+    listWaitlist.mockResolvedValue([entry]);
+    leaveWaitlist.mockResolvedValue(undefined);
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByText('My waitlist')).toBeInTheDocument());
+    expect(screen.getByText('The Fridge')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }));
+
+    await waitFor(() => expect(leaveWaitlist).toHaveBeenCalledWith('test-token', 'w1'));
   });
 });

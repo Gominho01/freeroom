@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { request } from '../http';
+import { ApiRequestError, request } from '../http';
 
 function mockFetchOnce(status: number, body: unknown) {
   vi.stubGlobal(
@@ -40,5 +40,17 @@ describe('request', () => {
     );
 
     await expect(request('/bookings')).rejects.toThrow('Request failed with status 500');
+  });
+
+  it('carries the HTTP status on the thrown error, so callers can branch on it', async () => {
+    mockFetchOnce(409, { error: { message: 'This time overlaps an existing booking.' } });
+
+    try {
+      await request('/bookings');
+      expect.unreachable('request should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiRequestError);
+      expect((err as ApiRequestError).status).toBe(409);
+    }
   });
 });

@@ -7,7 +7,10 @@ import { env } from "./config/env.js";
 import { generateOpenApiDocument } from "./docs/openapi.js";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.js";
 import { router } from "./routes/index.js";
+import { sendDueReminders } from "./services/booking.service.js";
 import { registerSocketHandlers } from "./sockets/index.js";
+
+const REMINDER_POLL_INTERVAL_MS = 60_000;
 
 export const app = express();
 
@@ -30,4 +33,8 @@ if (process.env.NODE_ENV !== "test") {
     console.log(`FreeRoom API + Socket.io running at http://localhost:${env.port}`);
     console.log(`Swagger UI at http://localhost:${env.port}/docs`);
   });
+
+  setInterval(() => {
+    sendDueReminders().catch((err) => console.error("sendDueReminders failed", err));
+  }, REMINDER_POLL_INTERVAL_MS);
 }

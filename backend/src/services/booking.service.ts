@@ -2,10 +2,20 @@ import type { Role } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../config/prisma.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../lib/errors.js";
+import { notify } from "./notification.service.js";
 
 export interface TimeRange {
   startTime: Date;
   endTime: Date;
+}
+
+/** A plain, timezone-independent "Jan 7, 2030, 10:00–11:00" for notification
+ * text — not meant to be pretty, just deterministic (UTC, no locale). */
+export function formatRange(startTime: Date, endTime: Date): string {
+  const date = startTime.toISOString().slice(0, 10);
+  const start = startTime.toISOString().slice(11, 16);
+  const end = endTime.toISOString().slice(11, 16);
+  return `${date}, ${start}–${end}`;
 }
 
 /**
@@ -52,7 +62,7 @@ export async function createBooking(params: CreateBookingParams) {
     });
   }
 
-  return prisma.booking.create({
+  const booking = await prisma.booking.create({
     data: {
       roomId: params.roomId,
       userId: params.userId,
@@ -60,6 +70,18 @@ export async function createBooking(params: CreateBookingParams) {
       endTime: params.endTime,
     },
   });
+
+  await notify({
+    userId: params.userId,
+    type: "BOOKING_CONFIRMED",
+    message: `Booked ${room.nickname} for ${formatRange(params.startTime, params.endTime)}.`,
+    email: {
+      subject: `Booking confirmed: ${room.nickname}`,
+      text: `Your booking for ${room.nickname} is confirmed for ${formatRange(params.startTime, params.endTime)}.`,
+    },
+  });
+
+  return booking;
 }
 
 /**
@@ -109,7 +131,7 @@ export async function createRecurringBooking(params: CreateRecurringBookingParam
   }
 
   const recurrenceId = randomUUID();
-  return prisma.$transaction(
+  const bookings = await prisma.$transaction(
     candidates.map((candidate) =>
       prisma.booking.create({
         data: {
@@ -122,6 +144,19 @@ export async function createRecurringBooking(params: CreateRecurringBookingParam
       }),
     ),
   );
+
+  // One notification for the whole series, not one per occurrence.
+  await notify({
+    userId: params.userId,
+    type: "BOOKING_CONFIRMED",
+    message: `Booked ${room.nickname} weekly, ${params.occurrences} times starting ${formatRange(params.startTime, params.endTime)}.`,
+    email: {
+      subject: `Booking series confirmed: ${room.nickname}`,
+      text: `Your weekly booking for ${room.nickname} is confirmed for ${params.occurrences} occurrences, starting ${formatRange(params.startTime, params.endTime)}.`,
+    },
+  });
+
+  return bookings;
 }
 
 export interface ListBookingsFilters {
@@ -146,7 +181,7 @@ export function listBookings(filters: ListBookingsFilters) {
   });
 }
 
-export async function cancelBooking(id: string, requester: { id: string; role: Role }): Promise<void> {
+export async function cancelBooking(id: string, requester: { id: string; role: Role }) {
   const booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) {
     throw new NotFoundError("Booking not found");
@@ -157,9 +192,10 @@ export async function cancelBooking(id: string, requester: { id: string; role: R
   }
 
   await prisma.booking.delete({ where: { id } });
+  return booking;
 }
 
-export async function cancelBookingSeries(recurrenceId: string, requester: { id: string; role: Role }): Promise<void> {
+export async function cancelBookingSeries(recurrenceId: string, requester: { id: string; role: Role }) {
   const bookings = await prisma.booking.findMany({ where: { recurrenceId } });
   if (bookings.length === 0) {
     throw new NotFoundError("Booking series not found");
@@ -171,4 +207,36 @@ export async function cancelBookingSeries(recurrenceId: string, requester: { id:
   }
 
   await prisma.booking.deleteMany({ where: { recurrenceId } });
+  return bookings;
+}
+
+export const REMINDER_LEAD_TIME_MS = 15 * 60 * 1000;
+
+/**
+ * One polling tick: emails+notifies whoever has a booking starting within
+ * the next `REMINDER_LEAD_TIME_MS`, once each — `reminderSentAt` is the
+ * guard against sending it twice on the next tick.
+ */
+export async function sendDueReminders(now: Date = new Date()): Promise<void> {
+  const dueBookings = await prisma.booking.findMany({
+    where: {
+      reminderSentAt: null,
+      startTime: { gt: now, lte: new Date(now.getTime() + REMINDER_LEAD_TIME_MS) },
+    },
+    include: { room: true },
+  });
+
+  for (const booking of dueBookings) {
+    await notify({
+      userId: booking.userId,
+      type: "BOOKING_REMINDER",
+      message: `Reminder: ${booking.room.nickname} starts soon (${formatRange(booking.startTime, booking.endTime)}).`,
+      email: {
+        subject: `Starting soon: ${booking.room.nickname}`,
+        text: `Your booking for ${booking.room.nickname} starts at ${formatRange(booking.startTime, booking.endTime)}.`,
+      },
+    });
+
+    await prisma.booking.update({ where: { id: booking.id }, data: { reminderSentAt: now } });
+  }
 }

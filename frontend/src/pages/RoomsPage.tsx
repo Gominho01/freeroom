@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LeaderboardModal } from '../components/LeaderboardModal';
 import { WorldMap } from '../components/map/WorldMap';
 import { MyBookingsModal } from '../components/MyBookingsModal';
+import { NotificationsBell } from '../components/NotificationsBell';
 import { OccupancyDashboardModal } from '../components/OccupancyDashboardModal';
 import { RoomCard } from '../components/RoomCard';
 import { RoomFormModal } from '../components/RoomFormModal';
@@ -75,6 +76,7 @@ export function RoomsPage() {
           <span>{user.name}</span>
         </div>
         <div className="rooms-header-actions">
+          <NotificationsBell />
           <button type="button" className="link-button" onClick={() => setShowMyBookings(true)}>
             My bookings
           </button>

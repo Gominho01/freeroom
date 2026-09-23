@@ -51,6 +51,8 @@ function mockBooking(overrides: { id: string; userId: string; endTime: Date }) {
     userId: overrides.userId,
     startTime: new Date(0),
     endTime: overrides.endTime,
+    recurrenceId: null,
+    reminderSentAt: null,
     createdAt: new Date(0),
     user: { id: overrides.userId, name: "Ada", avatarSeed: "ada-seed" },
   };
@@ -144,7 +146,7 @@ describe("world map", () => {
     // return value — both the watcher and the subject under test join the
     // same world channel and each needs their own identity.
     vi.mocked(prisma.user.findUnique).mockImplementation(
-      (async (args: { where: { id: string } }) => USERS[args.where.id] ?? null) as typeof prisma.user.findUnique,
+      (async (args: { where: { id: string } }) => USERS[args.where.id] ?? null) as unknown as typeof prisma.user.findUnique,
     );
   });
 

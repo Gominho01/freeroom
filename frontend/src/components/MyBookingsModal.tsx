@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { cancelBooking, cancelBookingSeries, listBookings } from '../services/bookings';
+import { cancelBooking, cancelBookingSeries, leaveWaitlist, listBookings, listWaitlist } from '../services/bookings';
 import { useAuthStore } from '../store/auth';
 import type { Room } from '../types';
 
@@ -24,14 +24,33 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
     queryFn: () => listBookings(token, { from: new Date().toISOString() }),
   });
 
+  // Cancelling can free a slot someone (including the canceller) is
+  // waitlisted for, which removes their entry and sends them a
+  // notification — so both queries need to be refreshed alongside bookings.
+  function invalidateAfterCancel() {
+    queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['waitlist'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  }
+
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelBooking(token, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+    onSuccess: invalidateAfterCancel,
   });
 
   const cancelSeriesMutation = useMutation({
     mutationFn: (recurrenceId: string) => cancelBookingSeries(token, recurrenceId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+    onSuccess: invalidateAfterCancel,
+  });
+
+  const waitlistQuery = useQuery({
+    queryKey: ['waitlist'],
+    queryFn: () => listWaitlist(token),
+  });
+
+  const leaveWaitlistMutation = useMutation({
+    mutationFn: (id: string) => leaveWaitlist(token, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['waitlist'] }),
   });
 
   function roomLabel(roomId: string): string {
@@ -39,6 +58,7 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
   }
 
   const bookings = bookingsQuery.data ?? [];
+  const waitlistEntries = waitlistQuery.data ?? [];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -87,6 +107,32 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
             </li>
           ))}
         </ul>
+
+        {waitlistEntries.length > 0 && (
+          <>
+            <h3 className="my-bookings-section-title">My waitlist</h3>
+            <ul className="my-bookings-list">
+              {waitlistEntries.map((entry) => (
+                <li key={entry.id}>
+                  <div>
+                    <p className="my-bookings-room">{entry.room?.nickname ?? roomLabel(entry.roomId)}</p>
+                    <p className="my-bookings-time">
+                      {format(new Date(entry.startTime), 'MMM d, HH:mm')} –{' '}
+                      {format(new Date(entry.endTime), 'HH:mm')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="link-button danger-link"
+                    onClick={() => leaveWaitlistMutation.mutate(entry.id)}
+                  >
+                    Leave
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         <div className="modal-actions">
           <button type="button" className="link-button" onClick={onClose}>

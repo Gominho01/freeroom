@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { UnauthorizedError } from "../lib/errors.js";
 import * as bookingService from "../services/booking.service.js";
+import * as waitlistService from "../services/waitlist.service.js";
 import type { CreateBookingBody, ListBookingsQuery } from "../schemas/booking.schema.js";
 
 function requireUser(req: Request) {
@@ -56,12 +57,16 @@ export async function list(req: Request, res: Response): Promise<void> {
 
 export async function remove(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
-  await bookingService.cancelBooking(req.params.id as string, user);
+  const booking = await bookingService.cancelBooking(req.params.id as string, user);
+  await waitlistService.fulfillWaitlistForFreedSlot(booking.roomId, booking);
   res.status(204).send();
 }
 
 export async function removeSeries(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
-  await bookingService.cancelBookingSeries(req.params.recurrenceId as string, user);
+  const bookings = await bookingService.cancelBookingSeries(req.params.recurrenceId as string, user);
+  for (const booking of bookings) {
+    await waitlistService.fulfillWaitlistForFreedSlot(booking.roomId, booking);
+  }
   res.status(204).send();
 }
