@@ -2,6 +2,7 @@ import { Router } from "express";
 import { analyticsRouter } from "./analytics.routes.js";
 import { authRouter } from "./auth.routes.js";
 import { bookingRouter } from "./booking.routes.js";
+import { notificationRouter } from "./notification.routes.js";
 import { roomRouter } from "./room.routes.js";
 
 export const router = Router();
@@ -14,3 +15,4 @@ router.use("/auth", authRouter);
 router.use("/rooms", roomRouter);
 router.use("/bookings", bookingRouter);
 router.use("/analytics", analyticsRouter);
+router.use("/notifications", notificationRouter);
