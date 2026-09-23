@@ -9,12 +9,14 @@ import {
   listBookingsQuerySchema,
   recurrenceIdParamsSchema,
 } from "../schemas/booking.schema.js";
+import { notificationResponseSchema } from "../schemas/notification.schema.js";
 import {
   createRoomBodySchema,
   roomIdParamsSchema,
   roomResponseSchema,
   updateRoomBodySchema,
 } from "../schemas/room.schema.js";
+import { joinWaitlistBodySchema, waitlistEntryResponseSchema, waitlistIdParamsSchema } from "../schemas/waitlist.schema.js";
 
 const registry = new OpenAPIRegistry();
 
@@ -184,6 +186,44 @@ registry.registerPath({
   },
 });
 
+// --- Waitlist ---
+
+registry.registerPath({
+  method: "post",
+  path: "/bookings/waitlist",
+  tags: ["Waitlist"],
+  security: authenticated,
+  request: { body: jsonContent(joinWaitlistBodySchema) },
+  responses: {
+    201: { description: "Joined the waitlist for this room/time range", ...jsonContent(waitlistEntryResponseSchema) },
+    400: { description: "Validation error", ...jsonContent(errorResponseSchema) },
+    404: { description: "Room not found", ...jsonContent(errorResponseSchema) },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/bookings/waitlist",
+  tags: ["Waitlist"],
+  security: authenticated,
+  responses: {
+    200: { description: "The requester's waitlist entries", ...jsonContent(z.array(waitlistEntryResponseSchema)) },
+  },
+});
+
+registry.registerPath({
+  method: "delete",
+  path: "/bookings/waitlist/{id}",
+  tags: ["Waitlist"],
+  security: authenticated,
+  request: { params: waitlistIdParamsSchema },
+  responses: {
+    204: { description: "Left the waitlist" },
+    403: { description: "Not the entry's owner", ...jsonContent(errorResponseSchema) },
+    404: { description: "Waitlist entry not found", ...jsonContent(errorResponseSchema) },
+  },
+});
+
 // --- Analytics ---
 
 registry.registerPath({
@@ -207,6 +247,28 @@ registry.registerPath({
       ...jsonContent(z.array(occupancyEntrySchema)),
     },
     403: { description: "Admin role required", ...jsonContent(errorResponseSchema) },
+  },
+});
+
+// --- Notifications ---
+
+registry.registerPath({
+  method: "get",
+  path: "/notifications",
+  tags: ["Notifications"],
+  security: authenticated,
+  responses: {
+    200: { description: "The requester's notifications, newest first", ...jsonContent(z.array(notificationResponseSchema)) },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/notifications/read",
+  tags: ["Notifications"],
+  security: authenticated,
+  responses: {
+    204: { description: "Every unread notification marked read" },
   },
 });
 
