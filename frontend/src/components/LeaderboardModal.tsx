@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { getLeaderboard } from '../services/analytics';
 import { useAuthStore } from '../store/auth';
 
@@ -17,6 +18,7 @@ function formatDuration(totalMinutes: number): string {
 }
 
 export function LeaderboardModal({ onClose }: LeaderboardModalProps) {
+  const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
   const token = useAuthStore((s) => s.token)!;
 
   const leaderboardQuery = useQuery({
@@ -28,8 +30,16 @@ export function LeaderboardModal({ onClose }: LeaderboardModalProps) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Busiest rooms this month</h2>
+      <div
+        ref={ref}
+        className="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id={titleId}>Busiest rooms this month</h2>
 
         {leaderboardQuery.isLoading && <p className="rooms-status">Loading…</p>}
         {entries.length === 0 && !leaderboardQuery.isLoading && (

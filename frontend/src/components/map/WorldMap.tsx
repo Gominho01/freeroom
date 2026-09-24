@@ -192,7 +192,11 @@ export function WorldMap({ rooms }: WorldMapProps) {
               style={{ left: building.x, top: building.y, width: building.w, height: building.h }}
             >
               <div className="world-building-door" />
-              <span className="world-building-status" aria-hidden="true" />
+              <span
+                className="world-building-status"
+                role="img"
+                aria-label={occupant ? 'Occupied' : 'Free'}
+              />
               <p className="world-building-label">{room.nickname}</p>
             </div>
           );

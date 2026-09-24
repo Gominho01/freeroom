@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { cancelBooking, cancelBookingSeries, leaveWaitlist, listBookings, listWaitlist } from '../services/bookings';
 import { useAuthStore } from '../store/auth';
 import type { Room } from '../types';
@@ -10,6 +11,7 @@ interface MyBookingsModalProps {
 }
 
 export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
+  const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
   const token = useAuthStore((s) => s.token)!;
   const currentUser = useAuthStore((s) => s.user)!;
   const isAdmin = currentUser.role === 'ADMIN';
@@ -62,8 +64,16 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>{isAdmin ? 'All bookings' : 'My bookings'}</h2>
+      <div
+        ref={ref}
+        className="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id={titleId}>{isAdmin ? 'All bookings' : 'My bookings'}</h2>
 
         {bookingsQuery.isLoading && <p className="rooms-status">Loading…</p>}
         {bookings.length === 0 && !bookingsQuery.isLoading && (
