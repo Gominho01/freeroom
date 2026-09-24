@@ -34,3 +34,19 @@ export async function request<T>(path: string, token?: string, options: RequestI
 
   return res.json() as Promise<T>;
 }
+
+/** Like `request`, but for a non-JSON file response (e.g. a .ics download) —
+ * returns the raw blob plus the filename the server suggested. */
+export async function requestFile(path: string, token?: string): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiRequestError(body.error?.message ?? `Request failed with status ${res.status}`, res.status);
+  }
+
+  const match = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '');
+  return { blob: await res.blob(), filename: match?.[1] ?? 'download' };
+}

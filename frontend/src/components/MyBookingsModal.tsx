@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { useState } from 'react';
 import { useDialogA11y } from '../hooks/useDialogA11y';
-import { cancelBooking, cancelBookingSeries, leaveWaitlist, listBookings, listWaitlist } from '../services/bookings';
+import {
+  cancelBooking,
+  cancelBookingSeries,
+  fetchBookingIcs,
+  leaveWaitlist,
+  listBookings,
+  listWaitlist,
+} from '../services/bookings';
 import { useAuthStore } from '../store/auth';
 import type { Room } from '../types';
 
@@ -16,6 +24,7 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
   const currentUser = useAuthStore((s) => s.user)!;
   const isAdmin = currentUser.role === 'ADMIN';
   const queryClient = useQueryClient();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // The backend ignores any userId filter for non-admins and always scopes
   // the result to the requester, so an unfiltered call is already "mine".
@@ -55,6 +64,23 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['waitlist'] }),
   });
 
+  async function handleAddToCalendar(id: string) {
+    setDownloadError(null);
+    try {
+      const { blob, filename } = await fetchBookingIcs(token, id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Could not download the calendar file');
+    }
+  }
+
   function roomLabel(roomId: string): string {
     return rooms.find((r) => r.id === roomId)?.nickname ?? 'Unknown room';
   }
@@ -74,6 +100,8 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId}>{isAdmin ? 'All bookings' : 'My bookings'}</h2>
+
+        {downloadError && <p className="auth-error">{downloadError}</p>}
 
         {bookingsQuery.isLoading && <p className="rooms-status">Loading…</p>}
         {bookings.length === 0 && !bookingsQuery.isLoading && (
@@ -97,6 +125,9 @@ export function MyBookingsModal({ rooms, onClose }: MyBookingsModalProps) {
                 )}
               </div>
               <div className="my-bookings-actions">
+                <button type="button" className="link-button" onClick={() => handleAddToCalendar(booking.id)}>
+                  Add to calendar
+                </button>
                 <button
                   type="button"
                   className="link-button danger-link"

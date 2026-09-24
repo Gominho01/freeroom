@@ -1,4 +1,4 @@
-import { request } from './http';
+import { request, requestFile } from './http';
 import type { Booking, WaitlistEntry } from '../types';
 
 export interface BookingFilters {
@@ -38,6 +38,12 @@ export function createRecurringBooking(
     method: 'POST',
     body: JSON.stringify({ ...rest, recurrence: { occurrences } }),
   });
+}
+
+/** The booking as a single-event .ics file, for importing into a calendar
+ * app — the blob's filename comes from the server's Content-Disposition. */
+export function fetchBookingIcs(token: string, id: string): Promise<{ blob: Blob; filename: string }> {
+  return requestFile(`/bookings/${id}/ics`, token);
 }
 
 export function cancelBooking(token: string, id: string): Promise<void> {
