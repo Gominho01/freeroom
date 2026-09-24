@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Room, User } from '../../types';
 
@@ -18,7 +18,7 @@ vi.mock('../../services/socket', () => ({
   watchRoom: vi.fn(() => vi.fn()),
 }));
 
-const user: User = {
+const adminUser: User = {
   id: 'u1',
   email: 'admin@example.com',
   name: 'Ada',
@@ -27,9 +27,13 @@ const user: User = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
+const regularUser: User = { ...adminUser, id: 'u2', role: 'USER' };
+
+let currentUser = adminUser;
+
 vi.mock('../../store/auth', () => ({
   useAuthStore: (selector: (state: { token: string; user: User; logout: () => void }) => unknown) =>
-    selector({ token: 'test-token', user, logout: vi.fn() }),
+    selector({ token: 'test-token', user: currentUser, logout: vi.fn() }),
 }));
 
 import { RoomsPage } from '../RoomsPage';
@@ -46,6 +50,7 @@ function renderWithClient() {
 describe('RoomsPage', () => {
   beforeEach(() => {
     listRooms.mockReset();
+    currentUser = adminUser;
   });
 
   it('renders the rooms returned by the API', async () => {
@@ -57,6 +62,7 @@ describe('RoomsPage', () => {
         quirks: ['Broken AC'],
         capacity: 8,
         amenities: [],
+        photos: [],
         createdAt: '2026-01-01T00:00:00.000Z',
       },
     ];
@@ -68,12 +74,45 @@ describe('RoomsPage', () => {
     expect(listRooms).toHaveBeenCalledWith('test-token');
   });
 
-  it('shows an empty state and the admin-only "New room" button', async () => {
+  it('shows an admin-only "New room" tile instead of empty-state text when there are no rooms', async () => {
+    listRooms.mockResolvedValue([]);
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /new room/i })).toBeInTheDocument());
+    expect(screen.queryByText(/no rooms yet/i)).not.toBeInTheDocument();
+  });
+
+  it('shows plain empty-state text and no "New room" tile for a regular user', async () => {
+    currentUser = regularUser;
     listRooms.mockResolvedValue([]);
 
     renderWithClient();
 
     await waitFor(() => expect(screen.getByText(/no rooms yet/i)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /new room/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new room/i })).not.toBeInTheDocument();
+  });
+
+  it('lets an admin add a room from the "New room" tile alongside existing rooms', async () => {
+    const rooms: Room[] = [
+      {
+        id: '1',
+        name: 'Conference Room A',
+        nickname: 'The Fridge',
+        quirks: [],
+        capacity: 8,
+        amenities: [],
+        photos: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+    listRooms.mockResolvedValue(rooms);
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByText('The Fridge')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /new room/i }));
+    expect(screen.getByRole('heading', { name: /^new room$/i })).toBeInTheDocument();
   });
 });

@@ -246,6 +246,33 @@ button[type='submit'],
   gap: 12px;
 }
 
+.room-card-add {
+  align-items: center;
+  background: none;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  gap: 8px;
+  justify-content: center;
+  min-height: 160px;
+  padding: 16px;
+}
+
+.room-card-add:hover,
+.room-card-add:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.room-card-add-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
 /* Room scene — a small pixel-art room (Gather-style) instead of a plain box.
    This is the app's one orchestrated animation: the current occupant
    handing off at the door as bookings start/end, no manual check-in
