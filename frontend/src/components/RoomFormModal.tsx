@@ -36,6 +36,88 @@ function toggle(set: Set<string>, value: string): Set<string> {
   return next;
 }
 
+function isImageUrl(value: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+interface PhotoPickerProps {
+  photos: string[];
+  onAdd: (url: string) => void;
+  onRemove: (index: number) => void;
+}
+
+/** Free-text URLs, not a picker from a known list — there's no fixed set of
+ * photos to choose from like there is for quirks/amenities. Validates
+ * dynamically on Add rather than on submit, per entering-data.md. */
+function PhotoPicker({ photos, onAdd, onRemove }: PhotoPickerProps) {
+  const [draftUrl, setDraftUrl] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  function handleAdd() {
+    const trimmed = draftUrl.trim();
+    if (!trimmed) return;
+    if (!isImageUrl(trimmed)) {
+      setError('Enter a valid URL starting with http:// or https://.');
+      return;
+    }
+    onAdd(trimmed);
+    setDraftUrl('');
+    setError(null);
+  }
+
+  return (
+    <fieldset className="photo-picker">
+      <legend>Photos</legend>
+
+      {photos.length > 0 && (
+        <ul className="photo-list">
+          {photos.map((url, index) => (
+            <li key={`${url}-${index}`} className="photo-list-item">
+              <img src={url} alt="" className="photo-thumb" />
+              <button
+                type="button"
+                className="photo-remove"
+                aria-label={`Remove photo ${index + 1}`}
+                onClick={() => onRemove(index)}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="photo-add-row">
+        <input
+          type="url"
+          value={draftUrl}
+          onChange={(e) => {
+            setDraftUrl(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder="https://images.example.com/room.jpg"
+          aria-label="Photo URL"
+        />
+        <button type="button" className="link-button" onClick={handleAdd} disabled={!draftUrl.trim()}>
+          Add
+        </button>
+      </div>
+
+      {error && <p className="auth-error">{error}</p>}
+    </fieldset>
+  );
+}
+
 interface TraitPickerProps {
   legend: string;
   options: RoomTraitOption[];
@@ -95,6 +177,8 @@ export function RoomFormModal({ room, onSave, onClose }: RoomFormModalProps) {
   const [amenityChecks, setAmenityChecks] = useState(initialAmenities.checked);
   const [otherAmenities, setOtherAmenities] = useState(initialAmenities.other);
 
+  const [photos, setPhotos] = useState<string[]>(room?.photos ?? []);
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim() || !nickname.trim()) return;
@@ -105,6 +189,7 @@ export function RoomFormModal({ room, onSave, onClose }: RoomFormModalProps) {
       quirks: combine(quirkChecks, otherQuirks),
       capacity: Number(capacity),
       amenities: combine(amenityChecks, otherAmenities),
+      photos,
     });
   }
 
@@ -157,6 +242,12 @@ export function RoomFormModal({ room, onSave, onClose }: RoomFormModalProps) {
           otherValue={otherAmenities}
           onOtherChange={setOtherAmenities}
           otherPlaceholder="Standing desk"
+        />
+
+        <PhotoPicker
+          photos={photos}
+          onAdd={(url) => setPhotos((prev) => [...prev, url])}
+          onRemove={(index) => setPhotos((prev) => prev.filter((_, i) => i !== index))}
         />
 
         <div className="modal-actions">

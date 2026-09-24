@@ -10,6 +10,7 @@ import { NotificationsBell } from '../components/NotificationsBell';
 import { OccupancyDashboardModal } from '../components/OccupancyDashboardModal';
 import { RoomCard } from '../components/RoomCard';
 import { RoomFormModal } from '../components/RoomFormModal';
+import { RoomGalleryModal } from '../components/RoomGalleryModal';
 import { createRoom, deleteRoom, listRooms, updateRoom } from '../services/rooms';
 import { useAuthStore } from '../store/auth';
 import type { Room, RoomInput } from '../types';
@@ -24,6 +25,7 @@ export function RoomsPage() {
   const [modalState, setModalState] = useState<{ room?: Room } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Room | null>(null);
   const [bookingRoom, setBookingRoom] = useState<Room | null>(null);
+  const [galleryRoom, setGalleryRoom] = useState<Room | null>(null);
   const [showMyBookings, setShowMyBookings] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showOccupancy, setShowOccupancy] = useState(false);
@@ -91,11 +93,6 @@ export function RoomsPage() {
               Occupancy dashboard
             </button>
           )}
-          {isAdmin && (
-            <button type="button" onClick={() => setModalState({})}>
-              New room
-            </button>
-          )}
           <button type="button" className="link-button" onClick={logout}>
             Log out
           </button>
@@ -105,26 +102,38 @@ export function RoomsPage() {
       {roomsQuery.isLoading && <p className="rooms-status">Loading rooms…</p>}
       {roomsQuery.isError && <p className="rooms-status">Failed to load rooms.</p>}
 
-      {roomsQuery.data && roomsQuery.data.length === 0 && (
-        <p className="rooms-status">No rooms yet.{isAdmin && ' Create the first one above.'}</p>
+      {roomsQuery.data && !showMap && roomsQuery.data.length === 0 && !isAdmin && (
+        <p className="rooms-status">No rooms yet.</p>
       )}
 
-      {roomsQuery.data && roomsQuery.data.length > 0 && showMap ? (
-        <WorldMap rooms={roomsQuery.data} />
-      ) : (
-        <div className="rooms-grid">
-          {roomsQuery.data?.map((room) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              isAdmin={isAdmin}
-              onBook={setBookingRoom}
-              onEdit={(r) => setModalState({ room: r })}
-              onDelete={setPendingDelete}
-            />
-          ))}
-        </div>
-      )}
+      {roomsQuery.data &&
+        (showMap ? (
+          <WorldMap rooms={roomsQuery.data} isAdmin={isAdmin} onCreateRoom={() => setModalState({})} />
+        ) : (
+          (roomsQuery.data.length > 0 || isAdmin) && (
+            <div className="rooms-grid">
+              {roomsQuery.data.map((room) => (
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  isAdmin={isAdmin}
+                  onBook={setBookingRoom}
+                  onEdit={(r) => setModalState({ room: r })}
+                  onDelete={setPendingDelete}
+                  onViewPhotos={setGalleryRoom}
+                />
+              ))}
+              {isAdmin && (
+                <button type="button" className="room-card-add" onClick={() => setModalState({})}>
+                  <span className="room-card-add-icon" aria-hidden="true">
+                    +
+                  </span>
+                  <span>New room</span>
+                </button>
+              )}
+            </div>
+          )
+        ))}
 
       {modalState && (
         <RoomFormModal room={modalState.room} onSave={handleSave} onClose={() => setModalState(null)} />
@@ -141,6 +150,14 @@ export function RoomsPage() {
       )}
 
       {bookingRoom && <BookingCalendarModal room={bookingRoom} onClose={() => setBookingRoom(null)} />}
+
+      {galleryRoom && (
+        <RoomGalleryModal
+          roomNickname={galleryRoom.nickname}
+          photos={galleryRoom.photos}
+          onClose={() => setGalleryRoom(null)}
+        />
+      )}
 
       {showMyBookings && (
         <MyBookingsModal rooms={roomsQuery.data ?? []} onClose={() => setShowMyBookings(false)} />

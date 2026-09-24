@@ -37,7 +37,31 @@ describe("Rooms", () => {
       quirks: ["Broken AC"],
       capacity: 4,
       amenities: ["projector"],
+      photos: [],
     });
+  });
+
+  it("stores photo URLs on a room and rejects a non-URL entry", async () => {
+    const admin = await createUser("ADMIN");
+
+    const withPhotos = await request(app)
+      .post("/rooms")
+      .set("Authorization", `Bearer ${admin.token}`)
+      .send({
+        name: "Room E",
+        nickname: "Room E",
+        capacity: 4,
+        amenities: [],
+        photos: ["https://images.example.com/a.jpg", "https://images.example.com/b.jpg"],
+      });
+    expect(withPhotos.status).toBe(201);
+    expect(withPhotos.body.photos).toEqual(["https://images.example.com/a.jpg", "https://images.example.com/b.jpg"]);
+
+    const invalidPhoto = await request(app)
+      .post("/rooms")
+      .set("Authorization", `Bearer ${admin.token}`)
+      .send({ name: "Room F", nickname: "Room F", capacity: 4, amenities: [], photos: ["not-a-url"] });
+    expect(invalidPhoto.status).toBe(400);
   });
 
   it("forbids a regular user from creating a room", async () => {

@@ -22,6 +22,7 @@ export function createRoom(data: CreateRoomBody) {
       quirks: data.quirks,
       capacity: data.capacity,
       amenities: data.amenities,
+      photos: data.photos,
     },
   });
 }

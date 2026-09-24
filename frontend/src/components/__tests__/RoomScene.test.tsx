@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { RoomScene } from '../RoomScene';
 
 describe('RoomScene', () => {
@@ -44,6 +44,19 @@ describe('RoomScene', () => {
   it('renders no wall screen when there is no projector or TV', () => {
     const { container } = render(<RoomScene occupant={null} amenities={['whiteboard']} />);
     expect(container.querySelector('.room-scene-screen')).toBeNull();
+  });
+
+  it('shows a clickable photo frame only when there are photos to view', () => {
+    const onViewPhotos = vi.fn();
+    const { rerender } = render(<RoomScene occupant={null} photos={[]} onViewPhotos={onViewPhotos} />);
+    expect(screen.queryByRole('button', { name: /view room photos/i })).not.toBeInTheDocument();
+
+    rerender(
+      <RoomScene occupant={null} photos={['https://images.example.com/a.jpg']} onViewPhotos={onViewPhotos} />,
+    );
+    const frame = screen.getByRole('button', { name: /view room photos/i });
+    fireEvent.click(frame);
+    expect(onViewPhotos).toHaveBeenCalledTimes(1);
   });
 
   it('draws fewer extra seats for a small room than a large one', () => {

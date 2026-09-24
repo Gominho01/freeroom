@@ -8,6 +8,7 @@ export const roomResponseSchema = z
     quirks: z.array(z.string()),
     capacity: z.number().int(),
     amenities: z.array(z.string()),
+    photos: z.array(z.string()),
     createdAt: z.string(),
   })
   .openapi("Room");
@@ -21,6 +22,10 @@ export const createRoomBodySchema = z
     quirks: z.array(z.string()).default([]).openapi({ example: ["Broken AC", "Weak Wi-Fi"] }),
     capacity: z.number().int().positive().openapi({ example: 8 }),
     amenities: z.array(z.string()).default([]).openapi({ example: ["projector", "tv"] }),
+    photos: z
+      .array(z.string().url())
+      .default([])
+      .openapi({ example: ["https://images.unsplash.com/photo-1497366216548-37526070297c"] }),
   })
   .openapi("CreateRoomRequest");
 
@@ -31,6 +36,7 @@ export const updateRoomBodySchema = z
     quirks: z.array(z.string()).optional(),
     capacity: z.number().int().positive().optional(),
     amenities: z.array(z.string()).optional(),
+    photos: z.array(z.string().url()).optional(),
   })
   .openapi("UpdateRoomRequest");
 

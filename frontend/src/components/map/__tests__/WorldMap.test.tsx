@@ -34,6 +34,7 @@ const rooms: Room[] = [
     quirks: [],
     capacity: 4,
     amenities: [],
+    photos: [],
     createdAt: '2026-01-01T00:00:00.000Z',
   },
   {
@@ -43,6 +44,7 @@ const rooms: Room[] = [
     quirks: [],
     capacity: 4,
     amenities: [],
+    photos: [],
     createdAt: '2026-01-01T00:00:00.000Z',
   },
 ];
@@ -62,7 +64,7 @@ describe('WorldMap', () => {
   });
 
   it('renders every room as a building, plus the front desk', () => {
-    renderWithClient(<WorldMap rooms={rooms} />);
+    renderWithClient(<WorldMap rooms={rooms} isAdmin={false} onCreateRoom={vi.fn()} />);
 
     expect(screen.getByText('The Fridge')).toBeInTheDocument();
     expect(screen.getByText('The Aquarium')).toBeInTheDocument();
@@ -70,7 +72,7 @@ describe('WorldMap', () => {
   });
 
   it("renders the current user's own avatar", () => {
-    renderWithClient(<WorldMap rooms={rooms} />);
+    renderWithClient(<WorldMap rooms={rooms} isAdmin={false} onCreateRoom={vi.fn()} />);
 
     expect(screen.getByText('Ada')).toBeInTheDocument();
   });
@@ -79,7 +81,7 @@ describe('WorldMap', () => {
     const leave = vi.fn();
     joinWorld.mockReturnValue(leave);
 
-    const { unmount } = renderWithClient(<WorldMap rooms={rooms} />);
+    const { unmount } = renderWithClient(<WorldMap rooms={rooms} isAdmin={false} onCreateRoom={vi.fn()} />);
     expect(joinWorld).toHaveBeenCalledWith('test-token', expect.objectContaining({ onPlayers: expect.any(Function) }));
 
     unmount();
@@ -87,7 +89,7 @@ describe('WorldMap', () => {
   });
 
   it('watches every room for live occupancy, same as the card view', () => {
-    renderWithClient(<WorldMap rooms={rooms} />);
+    renderWithClient(<WorldMap rooms={rooms} isAdmin={false} onCreateRoom={vi.fn()} />);
 
     expect(watchRoom).toHaveBeenCalledWith('test-token', 'room-1', expect.any(Function));
     expect(watchRoom).toHaveBeenCalledWith('test-token', 'room-2', expect.any(Function));
@@ -99,7 +101,7 @@ describe('WorldMap', () => {
       return vi.fn();
     });
 
-    renderWithClient(<WorldMap rooms={rooms} />);
+    renderWithClient(<WorldMap rooms={rooms} isAdmin={false} onCreateRoom={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('Bob')).toBeInTheDocument());
   });
@@ -113,10 +115,33 @@ describe('WorldMap', () => {
       return vi.fn();
     });
 
-    renderWithClient(<WorldMap rooms={rooms} />);
+    renderWithClient(<WorldMap rooms={rooms} isAdmin={false} onCreateRoom={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('Bob')).toBeInTheDocument());
     // Only one "Ada" — the viewer's own avatar — not a duplicate from the snapshot.
     expect(screen.getAllByText('Ada')).toHaveLength(1);
+  });
+
+  it('shows a create-room placeholder square for an admin on an empty map', () => {
+    const { container } = renderWithClient(<WorldMap rooms={[]} isAdmin onCreateRoom={vi.fn()} />);
+
+    // Not a click target — like every other door on the map, it's reached by
+    // walking up and pressing E, so this only checks it renders.
+    expect(container.querySelector('.world-building-placeholder')).not.toBeNull();
+    expect(screen.queryByText(/no rooms yet/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a plain empty-state message on an empty map for a non-admin', () => {
+    const { container } = renderWithClient(<WorldMap rooms={[]} isAdmin={false} onCreateRoom={vi.fn()} />);
+
+    expect(screen.getByText(/no rooms yet/i)).toBeInTheDocument();
+    expect(container.querySelector('.world-building-placeholder')).toBeNull();
+  });
+
+  it('shows no empty-map placeholder once there are rooms', () => {
+    const { container } = renderWithClient(<WorldMap rooms={rooms} isAdmin onCreateRoom={vi.fn()} />);
+
+    expect(container.querySelector('.world-building-placeholder')).toBeNull();
+    expect(screen.queryByText(/no rooms yet/i)).not.toBeInTheDocument();
   });
 });

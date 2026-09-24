@@ -246,6 +246,33 @@ button[type='submit'],
   gap: 12px;
 }
 
+.room-card-add {
+  align-items: center;
+  background: none;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  gap: 8px;
+  justify-content: center;
+  min-height: 160px;
+  padding: 16px;
+}
+
+.room-card-add:hover,
+.room-card-add:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.room-card-add-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
 /* Room scene — a small pixel-art room (Gather-style) instead of a plain box.
    This is the app's one orchestrated animation: the current occupant
    handing off at the door as bookings start/end, no manual check-in
@@ -404,6 +431,63 @@ button[type='submit'],
   image-rendering: pixelated;
 }
 
+/* A small framed photo hanging on the wall — the room's "view photos"
+   action, in the room's own visual language instead of a text link. Only
+   rendered when the room actually has photos. */
+.room-scene-photos {
+  background: var(--room-furniture);
+  border: none;
+  cursor: pointer;
+  height: 17%;
+  left: 34%;
+  padding: 2px;
+  position: absolute;
+  top: 27%;
+  width: 17%;
+}
+
+.room-scene-photos-pane {
+  background: var(--accent);
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+/* A tiny sun-and-mountain glyph — the universal "image" icon — so the frame
+   reads as "photos" at a glance, not just a flat wall decoration. Solid
+   accent at rest (not just on hover), so it reads as clickable against the
+   room's otherwise muted, grayscale palette without needing to be found by
+   hovering first. */
+.room-scene-photos-pane::before {
+  background: var(--bg);
+  border-radius: 50%;
+  content: '';
+  height: 26%;
+  left: 14%;
+  position: absolute;
+  top: 14%;
+  width: 26%;
+}
+
+.room-scene-photos-pane::after {
+  background: var(--bg);
+  bottom: 0;
+  clip-path: polygon(0% 100%, 40% 30%, 62% 58%, 82% 22%, 100% 100%);
+  content: '';
+  height: 65%;
+  left: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.room-scene-photos:hover .room-scene-photos-pane,
+.room-scene-photos:focus-visible .room-scene-photos-pane {
+  box-shadow: 0 0 0 2px var(--accent-bg);
+  filter: brightness(1.2);
+}
+
 /* Room / card modal */
 
 .modal-backdrop {
@@ -418,9 +502,12 @@ button[type='submit'],
 .modal-content {
   background: var(--bg);
   border-radius: 8px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: calc(100svh - 48px);
+  overflow-y: auto;
   padding: 20px;
   width: 100%;
   max-width: 360px;
@@ -482,6 +569,160 @@ label.trait-checkbox {
 .trait-hint {
   color: var(--text);
   font-size: 12px;
+}
+
+/* Room photos */
+
+.photo-picker {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.photo-picker legend {
+  color: var(--text);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.photo-list-item {
+  position: relative;
+}
+
+.photo-thumb {
+  border-radius: 4px;
+  display: block;
+  height: 48px;
+  object-fit: cover;
+  width: 64px;
+}
+
+.photo-remove {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 18px;
+}
+
+.photo-add-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.photo-add-row input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  flex: 1;
+  font: inherit;
+  padding: 8px 10px;
+}
+
+/* Room gallery */
+
+.gallery-modal {
+  max-width: 640px;
+}
+
+.gallery-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.gallery-header h2 {
+  margin: 0;
+}
+
+.gallery-viewport {
+  align-items: center;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  min-height: 320px;
+  position: relative;
+}
+
+.gallery-image {
+  animation: gallery-fade 200ms ease;
+  border-radius: 6px;
+  max-height: 420px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+@keyframes gallery-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-image {
+    animation: none;
+  }
+}
+
+.gallery-nav {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-size: 20px;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+}
+
+.gallery-nav-prev {
+  left: 12px;
+}
+
+.gallery-nav-next {
+  right: 12px;
+}
+
+.gallery-counter {
+  color: var(--text);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
 }
 
 /* Booking calendar */
@@ -806,6 +1047,30 @@ label.booking-repeat {
   text-align: center;
   top: 10px;
   width: 100%;
+}
+
+.world-building-placeholder {
+  align-items: center;
+  background: none;
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  display: flex;
+  font-size: 32px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+}
+
+.world-building-placeholder-label {
+  align-items: center;
+  color: var(--text);
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  margin: 0;
+  position: absolute;
+  text-align: center;
 }
 
 .world-receptionist {

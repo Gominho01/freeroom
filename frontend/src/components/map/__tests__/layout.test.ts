@@ -41,6 +41,14 @@ describe('computeLayout', () => {
     expect(layout.buildings).toHaveLength(0);
     expect(layout.mapHeight).toBeGreaterThan(0);
   });
+
+  it('places the placeholder slot and door exactly where the first building and its door would sit', () => {
+    const empty = computeLayout(0);
+    const withOne = computeLayout(1);
+
+    expect(empty.placeholderSlot).toEqual(withOne.buildings[0]);
+    expect(empty.placeholderDoor).toEqual(withOne.doors[0]);
+  });
 });
 
 describe('distance', () => {
