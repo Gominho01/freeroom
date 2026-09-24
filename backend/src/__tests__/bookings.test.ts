@@ -421,3 +421,55 @@ describe("Bookings", () => {
     });
   });
 });
+
+describe("Booking creation rate limiting", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await resetDatabase();
+    await prisma.$disconnect();
+  });
+
+  // The limiter runs before body validation, so invalid bodies still count
+  // toward the budget — no need for 10 distinct valid bookings to prove it.
+  it("returns 429 after too many requests from the same user within the window", async () => {
+    const user = await createUser("USER");
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const response = await request(app).post("/bookings").set("Authorization", `Bearer ${user.token}`).send({});
+      statuses.push(response.status);
+    }
+
+    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(400));
+    expect(statuses[10]).toBe(429);
+  });
+
+  it("shares the same budget between booking creation and joining the waitlist", async () => {
+    const user = await createUser("USER");
+
+    for (let i = 0; i < 10; i++) {
+      await request(app).post("/bookings").set("Authorization", `Bearer ${user.token}`).send({});
+    }
+
+    const response = await request(app)
+      .post("/bookings/waitlist")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({});
+    expect(response.status).toBe(429);
+  });
+
+  it("tracks the limit per user, not globally", async () => {
+    const userA = await createUser("USER");
+    const userB = await createUser("USER");
+
+    for (let i = 0; i < 10; i++) {
+      await request(app).post("/bookings").set("Authorization", `Bearer ${userA.token}`).send({});
+    }
+
+    const response = await request(app).post("/bookings").set("Authorization", `Bearer ${userB.token}`).send({});
+    expect(response.status).toBe(400);
+  });
+});
