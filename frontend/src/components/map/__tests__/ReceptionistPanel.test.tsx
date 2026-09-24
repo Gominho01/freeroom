@@ -11,6 +11,7 @@ const rooms: Room[] = [
     quirks: [],
     capacity: 4,
     amenities: [],
+    photos: [],
     createdAt: '2026-01-01T00:00:00.000Z',
   },
   {
@@ -20,6 +21,7 @@ const rooms: Room[] = [
     quirks: [],
     capacity: 4,
     amenities: [],
+    photos: [],
     createdAt: '2026-01-01T00:00:00.000Z',
   },
 ];
@@ -36,8 +38,10 @@ describe('ReceptionistPanel', () => {
       <ReceptionistPanel
         rooms={rooms}
         occupants={{ 'room-1': null, 'room-2': busyOccupant }}
+        isAdmin={false}
         onBook={vi.fn()}
         onMyBookings={vi.fn()}
+        onCreateRoom={vi.fn()}
         onClose={vi.fn()}
       />,
     );
@@ -50,7 +54,15 @@ describe('ReceptionistPanel', () => {
   it('calls onBook with the right room', () => {
     const onBook = vi.fn();
     render(
-      <ReceptionistPanel rooms={rooms} occupants={{}} onBook={onBook} onMyBookings={vi.fn()} onClose={vi.fn()} />,
+      <ReceptionistPanel
+        rooms={rooms}
+        occupants={{}}
+        isAdmin={false}
+        onBook={onBook}
+        onMyBookings={vi.fn()}
+        onCreateRoom={vi.fn()}
+        onClose={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: /book/i })[1]!);
@@ -64,8 +76,10 @@ describe('ReceptionistPanel', () => {
       <ReceptionistPanel
         rooms={rooms}
         occupants={{}}
+        isAdmin={false}
         onBook={vi.fn()}
         onMyBookings={onMyBookings}
+        onCreateRoom={vi.fn()}
         onClose={onClose}
       />,
     );
@@ -75,5 +89,35 @@ describe('ReceptionistPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^close$/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('only offers "New room" to an admin, and calls onCreateRoom', () => {
+    const onCreateRoom = vi.fn();
+    const { rerender } = render(
+      <ReceptionistPanel
+        rooms={rooms}
+        occupants={{}}
+        isAdmin={false}
+        onBook={vi.fn()}
+        onMyBookings={vi.fn()}
+        onCreateRoom={onCreateRoom}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /new room/i })).not.toBeInTheDocument();
+
+    rerender(
+      <ReceptionistPanel
+        rooms={rooms}
+        occupants={{}}
+        isAdmin
+        onBook={vi.fn()}
+        onMyBookings={vi.fn()}
+        onCreateRoom={onCreateRoom}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /new room/i }));
+    expect(onCreateRoom).toHaveBeenCalled();
   });
 });

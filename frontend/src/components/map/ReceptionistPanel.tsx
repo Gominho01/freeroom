@@ -4,12 +4,22 @@ import type { Occupant, Room } from '../../types';
 interface ReceptionistPanelProps {
   rooms: Room[];
   occupants: Record<string, Occupant | null>;
+  isAdmin: boolean;
   onBook: (room: Room) => void;
   onMyBookings: () => void;
+  onCreateRoom: () => void;
   onClose: () => void;
 }
 
-export function ReceptionistPanel({ rooms, occupants, onBook, onMyBookings, onClose }: ReceptionistPanelProps) {
+export function ReceptionistPanel({
+  rooms,
+  occupants,
+  isAdmin,
+  onBook,
+  onMyBookings,
+  onCreateRoom,
+  onClose,
+}: ReceptionistPanelProps) {
   const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
 
   return (
@@ -49,6 +59,11 @@ export function ReceptionistPanel({ rooms, occupants, onBook, onMyBookings, onCl
           <button type="button" className="link-button" onClick={onMyBookings}>
             My bookings
           </button>
+          {isAdmin && (
+            <button type="button" className="link-button" onClick={onCreateRoom}>
+              New room
+            </button>
+          )}
           <button type="button" className="link-button" onClick={onClose}>
             Close
           </button>
