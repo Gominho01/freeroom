@@ -19,6 +19,7 @@ export interface Room {
   quirks: string[];
   capacity: number;
   amenities: string[];
+  photos: string[];
   createdAt: string;
 }
 
@@ -28,6 +29,7 @@ export interface RoomInput {
   quirks: string[];
   capacity: number;
   amenities: string[];
+  photos: string[];
 }
 
 export interface Booking {

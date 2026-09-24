@@ -484,6 +484,160 @@ label.trait-checkbox {
   font-size: 12px;
 }
 
+/* Room photos */
+
+.photo-picker {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.photo-picker legend {
+  color: var(--text);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.photo-list-item {
+  position: relative;
+}
+
+.photo-thumb {
+  border-radius: 4px;
+  display: block;
+  height: 48px;
+  object-fit: cover;
+  width: 64px;
+}
+
+.photo-remove {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 18px;
+}
+
+.photo-add-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.photo-add-row input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  flex: 1;
+  font: inherit;
+  padding: 8px 10px;
+}
+
+/* Room gallery */
+
+.gallery-modal {
+  max-width: 640px;
+}
+
+.gallery-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.gallery-header h2 {
+  margin: 0;
+}
+
+.gallery-viewport {
+  align-items: center;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  min-height: 320px;
+  position: relative;
+}
+
+.gallery-image {
+  animation: gallery-fade 200ms ease;
+  border-radius: 6px;
+  max-height: 420px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+@keyframes gallery-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-image {
+    animation: none;
+  }
+}
+
+.gallery-nav {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-size: 20px;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+}
+
+.gallery-nav-prev {
+  left: 12px;
+}
+
+.gallery-nav-next {
+  right: 12px;
+}
+
+.gallery-counter {
+  color: var(--text);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+
 /* Booking calendar */
 
 .calendar-modal {
