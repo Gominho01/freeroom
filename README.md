@@ -147,6 +147,10 @@ cd backend  && npm run dev     # API + Socket.io at http://localhost:3333 (Swagg
 cd frontend && npm run dev     # Vite at http://localhost:5173
 ```
 
+## Known issues
+
+- **World map building labels can overlap under forced text-size zoom** — `.world-building-label` sits absolutely positioned over a fixed-width building box computed in `layout.ts`; a long room nickname combined with a browser "zoom text only" setting or an accessibility text-size override could overlap a neighboring building. Standard page zoom (which scales everything together) isn't affected. Low priority — revisit if it comes up in practice.
+
 ## Open Questions
 
 - Transition-check granularity: per-minute `node-cron` (simpler) vs. per-booking `setTimeout` (more precise, more state to manage).
