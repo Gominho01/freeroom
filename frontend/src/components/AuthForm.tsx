@@ -5,6 +5,27 @@ import { loginRequest, registerRequest } from '../services/api';
 import { randomSeed } from '../services/avatar';
 import { useAuthStore } from '../store/auth';
 
+/** Matches the weight of an SF Symbols-style monochrome icon: an outline,
+ * not a filled glyph, colored via currentColor so it inherits the field's
+ * text color instead of the accent (this is a utility, not an action). */
+function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+      {!open && (
+        <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
 export function AuthForm() {
   const setSession = useAuthStore((s) => s.setSession);
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -14,6 +35,7 @@ export function AuthForm() {
   const [avatarSeed, setAvatarSeed] = useState(() => randomSeed());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -66,13 +88,24 @@ export function AuthForm() {
 
         <label>
           Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
+          <div className="password-field">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              <EyeIcon open={showPassword} />
+            </button>
+          </div>
         </label>
 
         {error && <p className="auth-error">{error}</p>}
