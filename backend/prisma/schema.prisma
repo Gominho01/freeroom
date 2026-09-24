@@ -39,6 +39,7 @@ model Room {
   quirks    String[]
   capacity  Int
   amenities String[]
+  photos    String[] @default([])
   createdAt DateTime @default(now())
 
   bookings        Booking[]
