@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { KNOWN_AMENITIES, KNOWN_QUIRKS, type RoomTraitOption } from '../constants/roomTraits';
 import type { Room, RoomInput } from '../types';
 
@@ -81,6 +82,7 @@ interface RoomFormModalProps {
 }
 
 export function RoomFormModal({ room, onSave, onClose }: RoomFormModalProps) {
+  const { ref, titleId } = useDialogA11y<HTMLFormElement>(onClose);
   const [name, setName] = useState(room?.name ?? '');
   const [nickname, setNickname] = useState(room?.nickname ?? '');
   const [capacity, setCapacity] = useState(room?.capacity.toString() ?? '4');
@@ -108,8 +110,17 @@ export function RoomFormModal({ room, onSave, onClose }: RoomFormModalProps) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <form className="modal-content" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
-        <h2>{room ? 'Edit room' : 'New room'}</h2>
+      <form
+        ref={ref}
+        className="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+      >
+        <h2 id={titleId}>{room ? 'Edit room' : 'New room'}</h2>
 
         <label>
           Name

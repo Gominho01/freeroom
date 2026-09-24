@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { ApiRequestError } from '../services/http';
 import { createBooking, createRecurringBooking, joinWaitlist, listBookings, rangesOverlap } from '../services/bookings';
 import { useAuthStore } from '../store/auth';
@@ -26,6 +27,7 @@ interface BookingCalendarModalProps {
 }
 
 export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProps) {
+  const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
   const token = useAuthStore((s) => s.token)!;
   const queryClient = useQueryClient();
   const [start, setStart] = useState('');
@@ -155,8 +157,16 @@ export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProp
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content calendar-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{room.nickname}</h2>
+      <div
+        ref={ref}
+        className="modal-content calendar-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id={titleId}>{room.nickname}</h2>
         <p className="calendar-hint">Booked times over the next {DAYS_AHEAD} days:</p>
 
         {bookingsQuery.isLoading && <p className="rooms-status">Loading…</p>}

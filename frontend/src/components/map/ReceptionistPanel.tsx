@@ -1,3 +1,4 @@
+import { useDialogA11y } from '../../hooks/useDialogA11y';
 import type { Occupant, Room } from '../../types';
 
 interface ReceptionistPanelProps {
@@ -9,10 +10,20 @@ interface ReceptionistPanelProps {
 }
 
 export function ReceptionistPanel({ rooms, occupants, onBook, onMyBookings, onClose }: ReceptionistPanelProps) {
+  const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>"Welcome! Here's what's free right now."</h2>
+      <div
+        ref={ref}
+        className="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id={titleId}>"Welcome! Here's what's free right now."</h2>
 
         <ul className="receptionist-list">
           {rooms.map((room) => {

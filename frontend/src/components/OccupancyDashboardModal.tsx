@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { getOccupancy } from '../services/analytics';
 import { useAuthStore } from '../store/auth';
 import type { DayOfWeek } from '../types';
@@ -10,6 +11,7 @@ interface OccupancyDashboardModalProps {
 const DAYS: DayOfWeek[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function OccupancyDashboardModal({ onClose }: OccupancyDashboardModalProps) {
+  const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
   const token = useAuthStore((s) => s.token)!;
 
   const occupancyQuery = useQuery({
@@ -22,8 +24,16 @@ export function OccupancyDashboardModal({ onClose }: OccupancyDashboardModalProp
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content dashboard-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Occupancy by day of week</h2>
+      <div
+        ref={ref}
+        className="modal-content dashboard-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id={titleId}>Occupancy by day of week</h2>
 
         {occupancyQuery.isLoading && <p className="rooms-status">Loading…</p>}
         {entries.length === 0 && !occupancyQuery.isLoading && (
