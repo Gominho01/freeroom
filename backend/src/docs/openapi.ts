@@ -146,6 +146,7 @@ registry.registerPath({
     400: { description: "Validation error", ...jsonContent(errorResponseSchema) },
     404: { description: "Room not found", ...jsonContent(errorResponseSchema) },
     409: { description: "Time slot conflict for the booking, or for one of the series' occurrences", ...jsonContent(errorResponseSchema) },
+    429: { description: "Too many booking requests — rate limited per user", ...jsonContent(errorResponseSchema) },
   },
 });
 
@@ -198,6 +199,7 @@ registry.registerPath({
     201: { description: "Joined the waitlist for this room/time range", ...jsonContent(waitlistEntryResponseSchema) },
     400: { description: "Validation error", ...jsonContent(errorResponseSchema) },
     404: { description: "Room not found", ...jsonContent(errorResponseSchema) },
+    429: { description: "Too many booking requests — rate limited per user", ...jsonContent(errorResponseSchema) },
   },
 });
 
