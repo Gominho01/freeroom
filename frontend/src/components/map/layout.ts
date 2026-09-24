@@ -30,6 +30,10 @@ export interface MapLayout {
   receptionist: Rect;
   receptionistDoor: Point;
   spawn: Point;
+  // The first grid slot, always computed regardless of room count — used to
+  // place an "add a room" placeholder when there are no rooms yet.
+  placeholderSlot: Rect;
+  placeholderDoor: Point;
 }
 
 /** Rooms are laid out as a grid of "buildings"; the receptionist sits below
@@ -52,6 +56,9 @@ export function computeLayout(roomCount: number): MapLayout {
     doors.push({ x: x + BUILDING_W / 2, y: y + BUILDING_H + 18 });
   }
 
+  const placeholderSlot: Rect = { x: startX, y: TOP_MARGIN, w: BUILDING_W, h: BUILDING_H };
+  const placeholderDoor: Point = { x: startX + BUILDING_W / 2, y: TOP_MARGIN + BUILDING_H + 18 };
+
   const gridBottom = TOP_MARGIN + rows * (BUILDING_H + GRID_GAP);
   const receptionist: Rect = {
     x: MAP_WIDTH / 2 - RECEPTIONIST_SIZE / 2,
@@ -66,7 +73,17 @@ export function computeLayout(roomCount: number): MapLayout {
   // "press E" hint doesn't fire the instant you spawn.
   const spawn: Point = { x: MAP_WIDTH / 2, y: mapHeight - 40 };
 
-  return { mapWidth: MAP_WIDTH, mapHeight, buildings, doors, receptionist, receptionistDoor, spawn };
+  return {
+    mapWidth: MAP_WIDTH,
+    mapHeight,
+    buildings,
+    doors,
+    receptionist,
+    receptionistDoor,
+    spawn,
+    placeholderSlot,
+    placeholderDoor,
+  };
 }
 
 export function distance(a: Point, b: Point): number {

@@ -1022,6 +1022,30 @@ label.booking-repeat {
   width: 100%;
 }
 
+.world-building-placeholder {
+  align-items: center;
+  background: none;
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  display: flex;
+  font-size: 32px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+}
+
+.world-building-placeholder-label {
+  align-items: center;
+  color: var(--text);
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  margin: 0;
+  position: absolute;
+  text-align: center;
+}
+
 .world-receptionist {
   align-items: center;
   display: flex;

@@ -19,13 +19,15 @@ const MOVE_KEYS: Record<string, [number, number]> = {
   d: [1, 0],
 };
 
-type Nearby = { kind: 'room'; room: Room } | { kind: 'receptionist' } | null;
+type Nearby = { kind: 'room'; room: Room } | { kind: 'receptionist' } | { kind: 'create-room' } | null;
 
 interface WorldMapProps {
   rooms: Room[];
+  isAdmin: boolean;
+  onCreateRoom: () => void;
 }
 
-export function WorldMap({ rooms }: WorldMapProps) {
+export function WorldMap({ rooms, isAdmin, onCreateRoom }: WorldMapProps) {
   const token = useAuthStore((s) => s.token)!;
   const user = useAuthStore((s) => s.user)!;
 
@@ -53,8 +55,12 @@ export function WorldMap({ rooms }: WorldMapProps) {
   if (!nearby && distance(pos, layout.receptionistDoor) <= INTERACT_RADIUS) {
     nearby = { kind: 'receptionist' };
   }
+  if (!nearby && rooms.length === 0 && isAdmin && distance(pos, layout.placeholderDoor) <= INTERACT_RADIUS) {
+    nearby = { kind: 'create-room' };
+  }
 
   const nearbyRef = useRef(nearby);
+  const onCreateRoomRef = useRef(onCreateRoom);
 
   useEffect(() => {
     posRef.current = pos;
@@ -63,6 +69,10 @@ export function WorldMap({ rooms }: WorldMapProps) {
   useEffect(() => {
     nearbyRef.current = nearby;
   }, [nearby]);
+
+  useEffect(() => {
+    onCreateRoomRef.current = onCreateRoom;
+  }, [onCreateRoom]);
 
   // Live occupancy per room, same feed the card view uses — drives the
   // free/occupied dot on each building.
@@ -114,6 +124,7 @@ export function WorldMap({ rooms }: WorldMapProps) {
         const target = nearbyRef.current;
         if (target?.kind === 'room') setBookingRoom(target.room);
         if (target?.kind === 'receptionist') setShowReceptionist(true);
+        if (target?.kind === 'create-room') onCreateRoomRef.current();
       }
     }
     function handleKeyUp(e: KeyboardEvent) {
@@ -147,7 +158,10 @@ export function WorldMap({ rooms }: WorldMapProps) {
           x: posRef.current.x + (dx / length) * step,
           y: posRef.current.y + (dy / length) * step,
         };
-        const obstacles = [...layout.buildings, layout.receptionist];
+        const obstacles =
+          layout.buildings.length === 0
+            ? [layout.placeholderSlot, layout.receptionist]
+            : [...layout.buildings, layout.receptionist];
         const resolved = clampToMap(
           resolveMove(posRef.current, proposed, PLAYER_SIZE, obstacles),
           layout.mapWidth,
@@ -202,6 +216,33 @@ export function WorldMap({ rooms }: WorldMapProps) {
           );
         })}
 
+        {rooms.length === 0 &&
+          (isAdmin ? (
+            <div
+              className="world-building-placeholder"
+              style={{
+                left: layout.placeholderSlot.x,
+                top: layout.placeholderSlot.y,
+                width: layout.placeholderSlot.w,
+                height: layout.placeholderSlot.h,
+              }}
+            >
+              +
+            </div>
+          ) : (
+            <p
+              className="world-building-placeholder-label"
+              style={{
+                left: layout.placeholderSlot.x,
+                top: layout.placeholderSlot.y,
+                width: layout.placeholderSlot.w,
+                height: layout.placeholderSlot.h,
+              }}
+            >
+              No rooms yet.
+            </p>
+          ))}
+
         <div
           className="world-receptionist"
           style={{
@@ -227,17 +268,26 @@ export function WorldMap({ rooms }: WorldMapProps) {
           <span className="world-avatar-name">{user.name}</span>
         </div>
 
-        {nearby && (
-          <div
-            className="world-hint"
-            style={{
-              left: nearby.kind === 'room' ? layout.doors[rooms.indexOf(nearby.room)]!.x : layout.receptionistDoor.x,
-              top: (nearby.kind === 'room' ? layout.doors[rooms.indexOf(nearby.room)]!.y : layout.receptionistDoor.y) - 34,
-            }}
-          >
-            Press E to {nearby.kind === 'room' ? `book ${nearby.room.nickname}` : 'talk to the front desk'}
-          </div>
-        )}
+        {nearby &&
+          (() => {
+            const anchor =
+              nearby.kind === 'room'
+                ? layout.doors[rooms.indexOf(nearby.room)]!
+                : nearby.kind === 'create-room'
+                  ? layout.placeholderDoor
+                  : layout.receptionistDoor;
+            const label =
+              nearby.kind === 'room'
+                ? `book ${nearby.room.nickname}`
+                : nearby.kind === 'create-room'
+                  ? 'create a room'
+                  : 'talk to the front desk';
+            return (
+              <div className="world-hint" style={{ left: anchor.x, top: anchor.y - 34 }}>
+                Press E to {label}
+              </div>
+            );
+          })()}
       </div>
 
       <p className="world-controls-hint">Move with arrow keys or WASD. Press E near a door or the front desk.</p>
@@ -248,6 +298,7 @@ export function WorldMap({ rooms }: WorldMapProps) {
         <ReceptionistPanel
           rooms={rooms}
           occupants={occupants}
+          isAdmin={isAdmin}
           onBook={(room) => {
             setShowReceptionist(false);
             setBookingRoom(room);
@@ -255,6 +306,10 @@ export function WorldMap({ rooms }: WorldMapProps) {
           onMyBookings={() => {
             setShowReceptionist(false);
             setShowMyBookings(true);
+          }}
+          onCreateRoom={() => {
+            setShowReceptionist(false);
+            onCreateRoomRef.current();
           }}
           onClose={() => setShowReceptionist(false)}
         />
