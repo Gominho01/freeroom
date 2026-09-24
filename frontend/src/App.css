@@ -404,6 +404,63 @@ button[type='submit'],
   image-rendering: pixelated;
 }
 
+/* A small framed photo hanging on the wall — the room's "view photos"
+   action, in the room's own visual language instead of a text link. Only
+   rendered when the room actually has photos. */
+.room-scene-photos {
+  background: var(--room-furniture);
+  border: none;
+  cursor: pointer;
+  height: 17%;
+  left: 34%;
+  padding: 2px;
+  position: absolute;
+  top: 27%;
+  width: 17%;
+}
+
+.room-scene-photos-pane {
+  background: var(--accent);
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+/* A tiny sun-and-mountain glyph — the universal "image" icon — so the frame
+   reads as "photos" at a glance, not just a flat wall decoration. Solid
+   accent at rest (not just on hover), so it reads as clickable against the
+   room's otherwise muted, grayscale palette without needing to be found by
+   hovering first. */
+.room-scene-photos-pane::before {
+  background: var(--bg);
+  border-radius: 50%;
+  content: '';
+  height: 26%;
+  left: 14%;
+  position: absolute;
+  top: 14%;
+  width: 26%;
+}
+
+.room-scene-photos-pane::after {
+  background: var(--bg);
+  bottom: 0;
+  clip-path: polygon(0% 100%, 40% 30%, 62% 58%, 82% 22%, 100% 100%);
+  content: '';
+  height: 65%;
+  left: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.room-scene-photos:hover .room-scene-photos-pane,
+.room-scene-photos:focus-visible .room-scene-photos-pane {
+  box-shadow: 0 0 0 2px var(--accent-bg);
+  filter: brightness(1.2);
+}
+
 /* Room / card modal */
 
 .modal-backdrop {

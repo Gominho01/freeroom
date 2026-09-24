@@ -10,9 +10,10 @@ interface RoomCardProps {
   onBook: (room: Room) => void;
   onEdit: (room: Room) => void;
   onDelete: (room: Room) => void;
+  onViewPhotos: (room: Room) => void;
 }
 
-export function RoomCard({ room, isAdmin, onBook, onEdit, onDelete }: RoomCardProps) {
+export function RoomCard({ room, isAdmin, onBook, onEdit, onDelete, onViewPhotos }: RoomCardProps) {
   const token = useAuthStore((s) => s.token)!;
   const [occupant, setOccupant] = useState<Occupant | null>(null);
 
@@ -27,7 +28,14 @@ export function RoomCard({ room, isAdmin, onBook, onEdit, onDelete }: RoomCardPr
         <span className="room-card-capacity">{room.capacity} seats</span>
       </header>
 
-      <RoomScene occupant={occupant} quirks={room.quirks} amenities={room.amenities} capacity={room.capacity} />
+      <RoomScene
+        occupant={occupant}
+        quirks={room.quirks}
+        amenities={room.amenities}
+        capacity={room.capacity}
+        photos={room.photos}
+        onViewPhotos={() => onViewPhotos(room)}
+      />
 
       <p className="room-card-name">{room.name}</p>
 

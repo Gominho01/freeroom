@@ -7,6 +7,8 @@ interface RoomSceneProps {
   quirks?: string[];
   amenities?: string[];
   capacity?: number;
+  photos?: string[];
+  onViewPhotos?: () => void;
 }
 
 function hasBrokenAC(quirks: string[]): boolean {
@@ -31,7 +33,14 @@ function furnitureTier(capacity: number): 'small' | 'medium' | 'large' {
  * start and end (see README > Design Direction). Quirks/amenities/capacity
  * are optional so existing call sites (and older tests) keep working with
  * a plain, trait-less room. */
-export function RoomScene({ occupant, quirks = [], amenities = [], capacity = 6 }: RoomSceneProps) {
+export function RoomScene({
+  occupant,
+  quirks = [],
+  amenities = [],
+  capacity = 6,
+  photos = [],
+  onViewPhotos,
+}: RoomSceneProps) {
   const tier = furnitureTier(capacity);
 
   return (
@@ -131,6 +140,12 @@ export function RoomScene({ occupant, quirks = [], amenities = [], capacity = 6 
           </>
         )}
       </svg>
+
+      {photos.length > 0 && onViewPhotos && (
+        <button type="button" className="room-scene-photos" onClick={onViewPhotos} aria-label="View room photos">
+          <span className="room-scene-photos-pane" aria-hidden="true" />
+        </button>
+      )}
 
       <div className="room-scene-avatar-slot">
         <AnimatePresence mode="wait">
