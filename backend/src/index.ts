@@ -14,7 +14,11 @@ const REMINDER_POLL_INTERVAL_MS = 60_000;
 
 export const app = express();
 
-app.use(cors());
+// Content-Disposition isn't one of the CORS "safe" response headers, so it's
+// invisible to frontend JS (fetch's Content-Disposition read) unless
+// explicitly exposed — needed for the .ics download to get its real filename
+// instead of the browser's generic fallback.
+app.use(cors({ exposedHeaders: ["Content-Disposition"] }));
 app.use(express.json());
 app.use(router);
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(generateOpenApiDocument()));
