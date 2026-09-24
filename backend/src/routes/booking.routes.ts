@@ -26,4 +26,5 @@ bookingRouter.delete(
 bookingRouter.post("/waitlist", bookingCreationRateLimiter, validateBody(joinWaitlistBodySchema), waitlistController.join);
 bookingRouter.get("/waitlist", waitlistController.list);
 bookingRouter.delete("/waitlist/:id", validateParams(waitlistIdParamsSchema), waitlistController.leave);
+bookingRouter.get("/:id/ics", validateParams(bookingIdParamsSchema), bookingController.exportIcs);
 bookingRouter.delete("/:id", validateParams(bookingIdParamsSchema), bookingController.remove);

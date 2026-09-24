@@ -8,6 +8,7 @@ const cancelBooking = vi.fn();
 const cancelBookingSeries = vi.fn();
 const listWaitlist = vi.fn();
 const leaveWaitlist = vi.fn();
+const fetchBookingIcs = vi.fn();
 
 vi.mock('../../services/bookings', () => ({
   listBookings: (...args: unknown[]) => listBookings(...args),
@@ -15,6 +16,7 @@ vi.mock('../../services/bookings', () => ({
   cancelBookingSeries: (...args: unknown[]) => cancelBookingSeries(...args),
   listWaitlist: (...args: unknown[]) => listWaitlist(...args),
   leaveWaitlist: (...args: unknown[]) => leaveWaitlist(...args),
+  fetchBookingIcs: (...args: unknown[]) => fetchBookingIcs(...args),
 }));
 
 const { authState } = vi.hoisted(() => ({
@@ -58,6 +60,7 @@ describe('MyBookingsModal', () => {
     cancelBookingSeries.mockReset();
     listWaitlist.mockReset();
     leaveWaitlist.mockReset();
+    fetchBookingIcs.mockReset();
     listWaitlist.mockResolvedValue([]);
     authState.user = { id: 'viewer-1', name: 'Viewer', role: 'USER' };
   });
@@ -155,6 +158,58 @@ describe('MyBookingsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
     await waitFor(() => expect(cancelBooking).toHaveBeenCalledWith('test-token', 'b1'));
+  });
+
+  it('downloads the booking as an .ics file', async () => {
+    const booking: Booking = {
+      id: 'b1',
+      roomId: 'room-1',
+      userId: 'viewer-1',
+      startTime: '2030-01-05T10:00:00.000Z',
+      endTime: '2030-01-05T11:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    listBookings.mockResolvedValue([booking]);
+    const blob = new Blob(['BEGIN:VCALENDAR'], { type: 'text/calendar' });
+    fetchBookingIcs.mockResolvedValue({ blob, filename: 'the-fridge.ics' });
+
+    const createObjectURL = vi.fn(() => 'blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByText('The Fridge')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /add to calendar/i }));
+
+    await waitFor(() => expect(fetchBookingIcs).toHaveBeenCalledWith('test-token', 'b1'));
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
+    expect(clickSpy).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+
+    clickSpy.mockRestore();
+  });
+
+  it('shows an error message when the calendar download fails', async () => {
+    const booking: Booking = {
+      id: 'b1',
+      roomId: 'room-1',
+      userId: 'viewer-1',
+      startTime: '2030-01-05T10:00:00.000Z',
+      endTime: '2030-01-05T11:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    listBookings.mockResolvedValue([booking]);
+    fetchBookingIcs.mockRejectedValue(new Error('You can only export your own bookings'));
+
+    renderWithClient();
+
+    await waitFor(() => expect(screen.getByText('The Fridge')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /add to calendar/i }));
+
+    await waitFor(() => expect(screen.getByText('You can only export your own bookings')).toBeInTheDocument());
   });
 
   it('shows a "Weekly series" badge and a series cancel button for a recurring booking', async () => {

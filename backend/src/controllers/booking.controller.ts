@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { UnauthorizedError } from "../lib/errors.js";
+import { buildBookingIcs } from "../lib/ics.js";
 import * as bookingService from "../services/booking.service.js";
 import * as waitlistService from "../services/waitlist.service.js";
 import type { CreateBookingBody, ListBookingsQuery } from "../schemas/booking.schema.js";
@@ -53,6 +54,24 @@ export async function list(req: Request, res: Response): Promise<void> {
   });
 
   res.status(200).json(bookings);
+}
+
+export async function exportIcs(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  const booking = await bookingService.getBookingForExport(req.params.id as string, user);
+
+  const ics = buildBookingIcs({
+    uid: booking.id,
+    summary: `${booking.room.nickname} — FreeRoom booking`,
+    location: booking.room.name,
+    startTime: booking.startTime,
+    endTime: booking.endTime,
+  });
+
+  const filename = booking.room.nickname.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "booking";
+  res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}.ics"`);
+  res.status(200).send(ics);
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {
