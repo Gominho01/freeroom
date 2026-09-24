@@ -175,6 +175,22 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: "get",
+  path: "/bookings/{id}/ics",
+  tags: ["Bookings"],
+  security: authenticated,
+  request: { params: bookingIdParamsSchema },
+  responses: {
+    200: {
+      description: "The booking as a single-event .ics file, for importing into a calendar app",
+      content: { "text/calendar": { schema: z.string() } },
+    },
+    403: { description: "Not the booking owner", ...jsonContent(errorResponseSchema) },
+    404: { description: "Booking not found", ...jsonContent(errorResponseSchema) },
+  },
+});
+
+registry.registerPath({
   method: "delete",
   path: "/bookings/{id}",
   tags: ["Bookings"],

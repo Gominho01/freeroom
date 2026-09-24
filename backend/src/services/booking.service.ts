@@ -181,6 +181,19 @@ export function listBookings(filters: ListBookingsFilters) {
   });
 }
 
+export async function getBookingForExport(id: string, requester: { id: string; role: Role }) {
+  const booking = await prisma.booking.findUnique({ where: { id }, include: { room: true } });
+  if (!booking) {
+    throw new NotFoundError("Booking not found");
+  }
+
+  if (booking.userId !== requester.id && requester.role !== "ADMIN") {
+    throw new ForbiddenError("You can only export your own bookings");
+  }
+
+  return booking;
+}
+
 export async function cancelBooking(id: string, requester: { id: string; role: Role }) {
   const booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) {

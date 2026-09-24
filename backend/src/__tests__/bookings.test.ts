@@ -319,6 +319,76 @@ describe("Bookings", () => {
     expect(response.status).toBe(404);
   });
 
+  describe("exporting to .ics", () => {
+    it("returns a single-event .ics file for the booking owner", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token, { name: "The Fridge" });
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-07T10:00:00.000Z", endTime: "2030-01-07T11:00:00.000Z" });
+
+      const response = await request(app)
+        .get(`/bookings/${created.body.id}/ics`)
+        .set("Authorization", `Bearer ${user.token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.headers["content-type"]).toContain("text/calendar");
+      expect(response.headers["content-disposition"]).toContain("attachment");
+      expect(response.text).toContain("BEGIN:VCALENDAR");
+      expect(response.text).toContain("DTSTART:20300107T100000Z");
+      expect(response.text).toContain("DTEND:20300107T110000Z");
+      expect(response.text).toContain("The Fridge");
+    });
+
+    it("lets an admin export another user's booking", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-07T10:00:00.000Z", endTime: "2030-01-07T11:00:00.000Z" });
+
+      const response = await request(app)
+        .get(`/bookings/${created.body.id}/ics`)
+        .set("Authorization", `Bearer ${admin.token}`);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("forbids exporting someone else's booking", async () => {
+      const admin = await createUser("ADMIN");
+      const owner = await createUser("USER");
+      const other = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${owner.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-07T10:00:00.000Z", endTime: "2030-01-07T11:00:00.000Z" });
+
+      const response = await request(app)
+        .get(`/bookings/${created.body.id}/ics`)
+        .set("Authorization", `Bearer ${other.token}`);
+
+      expect(response.status).toBe(403);
+    });
+
+    it("returns 404 for a booking that does not exist", async () => {
+      const user = await createUser("USER");
+
+      const response = await request(app)
+        .get("/bookings/does-not-exist/ics")
+        .set("Authorization", `Bearer ${user.token}`);
+
+      expect(response.status).toBe(404);
+    });
+  });
+
   describe("recurring bookings", () => {
     it("creates one booking per occurrence, all sharing a recurrenceId", async () => {
       const admin = await createUser("ADMIN");
