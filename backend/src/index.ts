@@ -14,11 +14,18 @@ const REMINDER_POLL_INTERVAL_MS = 60_000;
 
 export const app = express();
 
+const allowedOrigins = env.corsOrigin?.split(",").map((origin) => origin.trim());
+
 // Content-Disposition isn't one of the CORS "safe" response headers, so it's
 // invisible to frontend JS (fetch's Content-Disposition read) unless
 // explicitly exposed — needed for the .ics download to get its real filename
 // instead of the browser's generic fallback.
-app.use(cors({ exposedHeaders: ["Content-Disposition"] }));
+app.use(
+  cors({
+    ...(allowedOrigins ? { origin: allowedOrigins } : {}),
+    exposedHeaders: ["Content-Disposition"],
+  }),
+);
 app.use(express.json());
 app.use(router);
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(generateOpenApiDocument()));
@@ -30,7 +37,7 @@ app.use(errorHandler);
 // gets its own httpServer + io in sockets.test.ts instead.
 if (process.env.NODE_ENV !== "test") {
   const httpServer = createServer(app);
-  const io = new Server(httpServer, { cors: { origin: "*" } });
+  const io = new Server(httpServer, { cors: { origin: allowedOrigins ?? "*" } });
   registerSocketHandlers(io);
 
   httpServer.listen(env.port, () => {
