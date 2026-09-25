@@ -1,0 +1,276 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addDays, format, isSameDay, startOfDay } from 'date-fns';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useDialogA11y } from '../hooks/useDialogA11y';
+import { ApiRequestError } from '../services/http';
+import { createBooking, createRecurringBooking, joinWaitlist, listBookings, rangesOverlap } from '../services/bookings';
+import { useAuthStore } from '../store/auth';
+import type { Booking, Room } from '../types';
+
+const DAYS_AHEAD = 7;
+
+function upcomingDays(): Date[] {
+  const today = startOfDay(new Date());
+  return Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i));
+}
+
+/** Formats "now" for a datetime-local input's `min` attribute, so the
+ * browser's own picker already blocks past dates/times. */
+function nowForInput(): string {
+  return format(new Date(), "yyyy-MM-dd'T'HH:mm");
+}
+
+interface BookingCalendarModalProps {
+  room: Room;
+  onClose: () => void;
+}
+
+export function BookingCalendarModal({ room, onClose }: BookingCalendarModalProps) {
+  const { ref, titleId } = useDialogA11y<HTMLDivElement>(onClose);
+  const token = useAuthStore((s) => s.token)!;
+  const queryClient = useQueryClient();
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [occurrences, setOccurrences] = useState('4');
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictRange, setConflictRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+
+  const bookingsQuery = useQuery({
+    queryKey: ['bookings', room.id],
+    queryFn: () => listBookings(token, { roomId: room.id }),
+  });
+
+  function handleBookingSaved() {
+    queryClient.invalidateQueries({ queryKey: ['bookings', room.id] });
+    queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    setStart('');
+    setEnd('');
+    setConflictError(null);
+    setConflictRange(null);
+  }
+
+  function handleConflict(err: Error, range: { start: Date; end: Date }) {
+    setConflictError(err.message);
+    setWaitlistJoined(false);
+    // Only a genuine time conflict (409) is worth offering a waitlist for —
+    // a validation error (400) or anything else isn't a "this room's busy"
+    // situation.
+    setConflictRange(err instanceof ApiRequestError && err.status === 409 ? range : null);
+  }
+
+  const createMutation = useMutation({
+    mutationFn: (data: { roomId: string; startTime: string; endTime: string }) => createBooking(token, data),
+    onSuccess: handleBookingSaved,
+  });
+
+  const createRecurringMutation = useMutation({
+    mutationFn: (data: { roomId: string; startTime: string; endTime: string; occurrences: number }) =>
+      createRecurringBooking(token, data),
+    onSuccess: handleBookingSaved,
+  });
+
+  const joinWaitlistMutation = useMutation({
+    mutationFn: (data: { roomId: string; startTime: string; endTime: string }) => joinWaitlist(token, data),
+    onSuccess: () => {
+      setWaitlistJoined(true);
+      queryClient.invalidateQueries({ queryKey: ['waitlist'] });
+    },
+  });
+
+  const bookings = bookingsQuery.data ?? [];
+
+  function bookingsOn(day: Date): Booking[] {
+    return bookings
+      .filter((booking) => isSameDay(new Date(booking.startTime), day))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }
+
+  function overlapsExisting(candidate: { start: Date; end: Date }): boolean {
+    return bookings.some((booking) =>
+      rangesOverlap(candidate, { start: new Date(booking.startTime), end: new Date(booking.endTime) }),
+    );
+  }
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!start || !end) return;
+
+    const range = { start: new Date(start), end: new Date(end) };
+    setConflictRange(null);
+    setWaitlistJoined(false);
+
+    if (range.start.getTime() <= Date.now()) {
+      setConflictError('Start time must be in the future.');
+      return;
+    }
+    if (range.end <= range.start) {
+      setConflictError('End time must be after the start time.');
+      return;
+    }
+
+    if (repeatWeekly) {
+      const count = Number(occurrences);
+      if (!Number.isInteger(count) || count < 2 || count > 12) {
+        setConflictError('Repeat for between 2 and 12 weeks.');
+        return;
+      }
+
+      // Only the first occurrence is checked against what's already loaded
+      // here — the rest of the series is validated server-side, which
+      // rejects the whole series (creating none of it) on any conflict.
+      setConflictError(null);
+      createRecurringMutation.mutate(
+        {
+          roomId: room.id,
+          startTime: range.start.toISOString(),
+          endTime: range.end.toISOString(),
+          occurrences: count,
+        },
+        { onError: (err) => handleConflict(err, range) },
+      );
+      return;
+    }
+
+    // Reflects the conflict immediately from what's already loaded, instead
+    // of waiting on the 409 the server would return for the same overlap —
+    // still offers the waitlist, since it's the same situation either way.
+    if (overlapsExisting(range)) {
+      setConflictError('This time overlaps an existing booking.');
+      setConflictRange(range);
+      return;
+    }
+
+    setConflictError(null);
+    createMutation.mutate(
+      {
+        roomId: room.id,
+        startTime: range.start.toISOString(),
+        endTime: range.end.toISOString(),
+      },
+      { onError: (err) => handleConflict(err, range) },
+    );
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        ref={ref}
+        className="modal-content calendar-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id={titleId}>{room.nickname}</h2>
+        <p className="calendar-hint">Booked times over the next {DAYS_AHEAD} days:</p>
+
+        {bookingsQuery.isLoading && <p className="rooms-status">Loading…</p>}
+
+        <div className="booking-days">
+          {upcomingDays().map((day) => {
+            const dayBookings = bookingsOn(day);
+            return (
+              <div key={day.toISOString()} className="booking-day">
+                <p className="booking-day-label">{format(day, 'EEE, MMM d')}</p>
+                {dayBookings.length === 0 ? (
+                  <p className="booking-day-free">Free</p>
+                ) : (
+                  <div className="booking-day-slots">
+                    {dayBookings.map((booking) => (
+                      <span key={booking.id} className="booking-slot">
+                        {format(new Date(booking.startTime), 'HH:mm')}–{format(new Date(booking.endTime), 'HH:mm')}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <form className="booking-form" onSubmit={handleSubmit}>
+          <label>
+            Starts
+            <input
+              type="datetime-local"
+              value={start}
+              min={nowForInput()}
+              onChange={(e) => setStart(e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Ends
+            <input
+              type="datetime-local"
+              value={end}
+              min={start || nowForInput()}
+              onChange={(e) => setEnd(e.target.value)}
+              required
+            />
+          </label>
+
+          <label className="booking-repeat">
+            <input type="checkbox" checked={repeatWeekly} onChange={(e) => setRepeatWeekly(e.target.checked)} />
+            Repeat weekly
+          </label>
+
+          {repeatWeekly && (
+            <label>
+              For how many weeks
+              <input
+                type="number"
+                min={2}
+                max={12}
+                value={occurrences}
+                onChange={(e) => setOccurrences(e.target.value)}
+              />
+            </label>
+          )}
+
+          {conflictError && <p className="auth-error">{conflictError}</p>}
+
+          {conflictRange && !waitlistJoined && (
+            <button
+              type="button"
+              className="link-button"
+              disabled={joinWaitlistMutation.isPending}
+              onClick={() =>
+                joinWaitlistMutation.mutate({
+                  roomId: room.id,
+                  startTime: conflictRange.start.toISOString(),
+                  endTime: conflictRange.end.toISOString(),
+                })
+              }
+            >
+              {joinWaitlistMutation.isPending ? 'Joining waitlist…' : 'Join waitlist for this time'}
+            </button>
+          )}
+          {waitlistJoined && (
+            <p className="calendar-hint">
+              Added to your waitlist — if it opens up, we'll book it for you automatically and let you know.
+            </p>
+          )}
+
+          <div className="modal-actions">
+            <button type="button" className="link-button" onClick={onClose}>
+              Close
+            </button>
+            <button type="submit" disabled={createMutation.isPending || createRecurringMutation.isPending}>
+              {createMutation.isPending || createRecurringMutation.isPending
+                ? 'Booking…'
+                : repeatWeekly
+                  ? 'Book series'
+                  : 'Book room'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

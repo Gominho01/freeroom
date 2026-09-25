@@ -1,0 +1,545 @@
+import request from "supertest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { prisma } from "../config/prisma.js";
+import { app } from "../index.js";
+import { createUser, resetDatabase } from "./helpers.js";
+
+// These integration tests hit a real Postgres via Prisma (DATABASE_URL).
+// They require `docker compose up -d && npm run prisma:migrate` locally.
+
+async function createRoom(adminToken: string, overrides: Partial<{ name: string; capacity: number }> = {}) {
+  const response = await request(app)
+    .post("/rooms")
+    .set("Authorization", `Bearer ${adminToken}`)
+    .send({
+      name: overrides.name ?? "Room",
+      nickname: overrides.name ?? "Room",
+      capacity: overrides.capacity ?? 4,
+      amenities: [],
+    });
+  return response.body;
+}
+
+describe("Bookings", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await resetDatabase();
+    await prisma.$disconnect();
+  });
+
+  it("creates a booking for the authenticated user", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    const response = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({ roomId: room.id, userId: user.user.id });
+  });
+
+  it("rejects a booking where endTime is not after startTime", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    const response = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T11:00:00.000Z",
+        endTime: "2030-01-01T10:00:00.000Z",
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects a booking that starts in the past", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    const response = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2020-01-01T10:00:00.000Z",
+        endTime: "2020-01-01T11:00:00.000Z",
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects an overlapping booking for the same room with 409", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    const conflicting = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:30:00.000Z",
+        endTime: "2030-01-01T11:30:00.000Z",
+      });
+
+    expect(conflicting.status).toBe(409);
+    expect(conflicting.body.error).toBeDefined();
+  });
+
+  it("allows non-overlapping (back-to-back) bookings on the same room", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    const first = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T11:00:00.000Z",
+        endTime: "2030-01-01T12:00:00.000Z",
+      });
+    expect(second.status).toBe(201);
+  });
+
+  it("returns 404 when booking a room that does not exist", async () => {
+    const user = await createUser("USER");
+
+    const response = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: "does-not-exist",
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("only lets non-admin users see their own bookings, even when filtering by another userId", async () => {
+    const admin = await createUser("ADMIN");
+    const userA = await createUser("USER");
+    const userB = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${userB.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T12:00:00.000Z",
+        endTime: "2030-01-01T13:00:00.000Z",
+      });
+
+    const asUserATryingToSeeUserB = await request(app)
+      .get(`/bookings?userId=${userB.user.id}`)
+      .set("Authorization", `Bearer ${userA.token}`);
+    expect(asUserATryingToSeeUserB.status).toBe(200);
+    expect(asUserATryingToSeeUserB.body).toHaveLength(1);
+    expect(asUserATryingToSeeUserB.body[0].userId).toBe(userA.user.id);
+
+    const asAdminFilteringByUserB = await request(app)
+      .get(`/bookings?userId=${userB.user.id}`)
+      .set("Authorization", `Bearer ${admin.token}`);
+    expect(asAdminFilteringByUserB.status).toBe(200);
+    expect(asAdminFilteringByUserB.body).toHaveLength(1);
+    expect(asAdminFilteringByUserB.body[0].userId).toBe(userB.user.id);
+
+    const asAdminSeeingAll = await request(app).get("/bookings").set("Authorization", `Bearer ${admin.token}`);
+    expect(asAdminSeeingAll.status).toBe(200);
+    expect(asAdminSeeingAll.body).toHaveLength(2);
+    // The admin sees everyone's bookings at once, so each one carries the
+    // owner's name — otherwise there'd be no way to tell whose is whose.
+    const byUserId = Object.fromEntries(
+      asAdminSeeingAll.body.map((b: { userId: string; user: { name: string } }) => [b.userId, b.user.name]),
+    );
+    expect(byUserId[userA.user.id]).toBe(userA.user.name);
+    expect(byUserId[userB.user.id]).toBe(userB.user.name);
+  });
+
+  it("filters bookings by roomId", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const roomOne = await createRoom(admin.token, { name: "Room One" });
+    const roomTwo = await createRoom(admin.token, { name: "Room Two" });
+
+    await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: roomOne.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        roomId: roomTwo.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    const response = await request(app)
+      .get(`/bookings?roomId=${roomOne.id}`)
+      .set("Authorization", `Bearer ${user.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0].roomId).toBe(roomOne.id);
+  });
+
+  it("excludes already-ended bookings when filtered with `from`, so My Bookings stops listing the past", async () => {
+    const admin = await createUser("ADMIN");
+    const user = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    // The API itself refuses to create a booking in the past, but a
+    // real one still ends up there once its own end time elapses — insert
+    // directly to simulate that, the same way occupancy.service.test.ts does.
+    const past = await prisma.booking.create({
+      data: {
+        roomId: room.id,
+        userId: user.user.id,
+        startTime: new Date("2020-01-01T10:00:00.000Z"),
+        endTime: new Date("2020-01-01T11:00:00.000Z"),
+      },
+    });
+
+    const upcoming = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({ roomId: room.id, startTime: "2030-01-01T10:00:00.000Z", endTime: "2030-01-01T11:00:00.000Z" });
+
+    const unfiltered = await request(app).get("/bookings").set("Authorization", `Bearer ${user.token}`);
+    expect(unfiltered.body.map((b: { id: string }) => b.id).sort()).toEqual(
+      [past.id, upcoming.body.id].sort(),
+    );
+
+    const response = await request(app)
+      .get(`/bookings?from=${new Date().toISOString()}`)
+      .set("Authorization", `Bearer ${user.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0].id).toBe(upcoming.body.id);
+  });
+
+  it("lets the owner cancel their booking, forbids a stranger, allows an admin", async () => {
+    const admin = await createUser("ADMIN");
+    const owner = await createUser("USER");
+    const stranger = await createUser("USER");
+    const room = await createRoom(admin.token);
+
+    const booking = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    const forbidden = await request(app)
+      .delete(`/bookings/${booking.body.id}`)
+      .set("Authorization", `Bearer ${stranger.token}`);
+    expect(forbidden.status).toBe(403);
+
+    const ownerCancel = await request(app)
+      .delete(`/bookings/${booking.body.id}`)
+      .set("Authorization", `Bearer ${owner.token}`);
+    expect(ownerCancel.status).toBe(204);
+
+    const secondBooking = await request(app)
+      .post("/bookings")
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({
+        roomId: room.id,
+        startTime: "2030-01-01T10:00:00.000Z",
+        endTime: "2030-01-01T11:00:00.000Z",
+      });
+
+    const adminCancel = await request(app)
+      .delete(`/bookings/${secondBooking.body.id}`)
+      .set("Authorization", `Bearer ${admin.token}`);
+    expect(adminCancel.status).toBe(204);
+  });
+
+  it("returns 404 when cancelling a booking that does not exist", async () => {
+    const user = await createUser("USER");
+
+    const response = await request(app)
+      .delete("/bookings/does-not-exist")
+      .set("Authorization", `Bearer ${user.token}`);
+
+    expect(response.status).toBe(404);
+  });
+
+  describe("exporting to .ics", () => {
+    it("returns a single-event .ics file for the booking owner", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token, { name: "The Fridge" });
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-07T10:00:00.000Z", endTime: "2030-01-07T11:00:00.000Z" });
+
+      const response = await request(app)
+        .get(`/bookings/${created.body.id}/ics`)
+        .set("Authorization", `Bearer ${user.token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.headers["content-type"]).toContain("text/calendar");
+      expect(response.headers["content-disposition"]).toContain("attachment");
+      expect(response.text).toContain("BEGIN:VCALENDAR");
+      expect(response.text).toContain("DTSTART:20300107T100000Z");
+      expect(response.text).toContain("DTEND:20300107T110000Z");
+      expect(response.text).toContain("The Fridge");
+    });
+
+    it("lets an admin export another user's booking", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-07T10:00:00.000Z", endTime: "2030-01-07T11:00:00.000Z" });
+
+      const response = await request(app)
+        .get(`/bookings/${created.body.id}/ics`)
+        .set("Authorization", `Bearer ${admin.token}`);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("forbids exporting someone else's booking", async () => {
+      const admin = await createUser("ADMIN");
+      const owner = await createUser("USER");
+      const other = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${owner.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-07T10:00:00.000Z", endTime: "2030-01-07T11:00:00.000Z" });
+
+      const response = await request(app)
+        .get(`/bookings/${created.body.id}/ics`)
+        .set("Authorization", `Bearer ${other.token}`);
+
+      expect(response.status).toBe(403);
+    });
+
+    it("returns 404 for a booking that does not exist", async () => {
+      const user = await createUser("USER");
+
+      const response = await request(app)
+        .get("/bookings/does-not-exist/ics")
+        .set("Authorization", `Bearer ${user.token}`);
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("recurring bookings", () => {
+    it("creates one booking per occurrence, all sharing a recurrenceId", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const response = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          roomId: room.id,
+          startTime: "2030-01-07T10:00:00.000Z", // a Monday
+          endTime: "2030-01-07T11:00:00.000Z",
+          recurrence: { occurrences: 3 },
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveLength(3);
+      const recurrenceId = response.body[0].recurrenceId;
+      expect(recurrenceId).toBeTruthy();
+      expect(response.body.every((b: { recurrenceId: string }) => b.recurrenceId === recurrenceId)).toBe(true);
+      expect(response.body.map((b: { startTime: string }) => b.startTime)).toEqual([
+        "2030-01-07T10:00:00.000Z",
+        "2030-01-14T10:00:00.000Z",
+        "2030-01-21T10:00:00.000Z",
+      ]);
+    });
+
+    it("rejects the whole series with 409 when any single occurrence conflicts, creating none of it", async () => {
+      const admin = await createUser("ADMIN");
+      const user = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      // Occupies the room on the third occurrence's date only.
+      await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ roomId: room.id, startTime: "2030-01-21T10:30:00.000Z", endTime: "2030-01-21T11:30:00.000Z" });
+
+      const response = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          roomId: room.id,
+          startTime: "2030-01-07T10:00:00.000Z",
+          endTime: "2030-01-07T11:00:00.000Z",
+          recurrence: { occurrences: 3 },
+        });
+
+      expect(response.status).toBe(409);
+
+      const remaining = await request(app)
+        .get(`/bookings?roomId=${room.id}`)
+        .set("Authorization", `Bearer ${user.token}`);
+      // Only the single pre-existing booking — none of the series was created.
+      expect(remaining.body).toHaveLength(1);
+    });
+
+    it("lets the series owner cancel every occurrence at once, forbids a stranger", async () => {
+      const admin = await createUser("ADMIN");
+      const owner = await createUser("USER");
+      const stranger = await createUser("USER");
+      const room = await createRoom(admin.token);
+
+      const created = await request(app)
+        .post("/bookings")
+        .set("Authorization", `Bearer ${owner.token}`)
+        .send({
+          roomId: room.id,
+          startTime: "2030-01-07T10:00:00.000Z",
+          endTime: "2030-01-07T11:00:00.000Z",
+          recurrence: { occurrences: 3 },
+        });
+      const recurrenceId = created.body[0].recurrenceId;
+
+      const forbidden = await request(app)
+        .delete(`/bookings/series/${recurrenceId}`)
+        .set("Authorization", `Bearer ${stranger.token}`);
+      expect(forbidden.status).toBe(403);
+
+      const cancelled = await request(app)
+        .delete(`/bookings/series/${recurrenceId}`)
+        .set("Authorization", `Bearer ${owner.token}`);
+      expect(cancelled.status).toBe(204);
+
+      const remaining = await request(app)
+        .get(`/bookings?roomId=${room.id}`)
+        .set("Authorization", `Bearer ${owner.token}`);
+      expect(remaining.body).toHaveLength(0);
+    });
+
+    it("returns 404 when cancelling a series that does not exist", async () => {
+      const user = await createUser("USER");
+
+      const response = await request(app)
+        .delete("/bookings/series/does-not-exist")
+        .set("Authorization", `Bearer ${user.token}`);
+
+      expect(response.status).toBe(404);
+    });
+  });
+});
+
+describe("Booking creation rate limiting", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await resetDatabase();
+    await prisma.$disconnect();
+  });
+
+  // The limiter runs before body validation, so invalid bodies still count
+  // toward the budget — no need for 10 distinct valid bookings to prove it.
+  it("returns 429 after too many requests from the same user within the window", async () => {
+    const user = await createUser("USER");
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const response = await request(app).post("/bookings").set("Authorization", `Bearer ${user.token}`).send({});
+      statuses.push(response.status);
+    }
+
+    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(400));
+    expect(statuses[10]).toBe(429);
+  });
+
+  it("shares the same budget between booking creation and joining the waitlist", async () => {
+    const user = await createUser("USER");
+
+    for (let i = 0; i < 10; i++) {
+      await request(app).post("/bookings").set("Authorization", `Bearer ${user.token}`).send({});
+    }
+
+    const response = await request(app)
+      .post("/bookings/waitlist")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({});
+    expect(response.status).toBe(429);
+  });
+
+  it("tracks the limit per user, not globally", async () => {
+    const userA = await createUser("USER");
+    const userB = await createUser("USER");
+
+    for (let i = 0; i < 10; i++) {
+      await request(app).post("/bookings").set("Authorization", `Bearer ${userA.token}`).send({});
+    }
+
+    const response = await request(app).post("/bookings").set("Authorization", `Bearer ${userB.token}`).send({});
+    expect(response.status).toBe(400);
+  });
+});
